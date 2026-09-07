@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { dataService } from "../../services/dataService";
 import { CustomForm, FormField, FormSubmission } from "../../types";
+import { generateQRCodeSVG, generateQRCodeDataURL } from "../../utils/qrCodeGenerator";
 
 const FIELD_PALETTE = [
   { type: "text", label: "Short Text", icon: "Aa" },
@@ -16,61 +17,6 @@ const FIELD_PALETTE = [
   { type: "heading", label: "Section Heading", icon: "H1" },
 ];
 
-// Lightweight SVG QR Code generator component (Renders crisp scanable QR matrix)
-function QRCodeSVG({ value, size = 160 }: { value: string; size?: number }) {
-  // Simple deterministic visual matrix representing QR pattern for the URL
-  const hash = Array.from(value).reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % 1000000007, 7);
-  const cells: boolean[][] = [];
-  const dim = 21;
-
-  for (let r = 0; r < dim; r++) {
-    const row: boolean[] = [];
-    for (let c = 0; c < dim; c++) {
-      // Finder patterns in 3 corners
-      const isTopLeft = r < 7 && c < 7;
-      const isTopRight = r < 7 && c >= dim - 7;
-      const isBottomLeft = r >= dim - 7 && c < 7;
-
-      if (isTopLeft || isTopRight || isBottomLeft) {
-        const lr = isTopLeft ? r : isTopRight ? r : r - (dim - 7);
-        const lc = isTopLeft ? c : isTopRight ? c - (dim - 7) : c;
-        if (lr === 0 || lr === 6 || lc === 0 || lc === 6 || (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4)) {
-          row.push(true);
-        } else {
-          row.push(false);
-        }
-      } else if (r === 6 || c === 6) {
-        row.push((r + c) % 2 === 0);
-      } else {
-        const bit = ((hash ^ (r * 19 + c * 37)) & (1 << ((r + c) % 15))) !== 0;
-        row.push(bit);
-      }
-    }
-    cells.push(row);
-  }
-
-  const cellSize = size / dim;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="bg-white p-2 rounded-xl border border-slate-200">
-      {cells.map((row, r) =>
-        row.map((active, c) =>
-          active ? (
-            <rect
-              key={`${r}-${c}`}
-              x={c * cellSize}
-              y={r * cellSize}
-              width={cellSize}
-              height={cellSize}
-              fill="#0f172a"
-            />
-          ) : null
-        )
-      )}
-    </svg>
-  );
-}
-
 export default function FormBuilder() {
   const [tab, setTab] = useState<"builder" | "list" | "submissions">("builder");
   const [forms, setForms] = useState<CustomForm[]>([]);
@@ -85,6 +31,7 @@ export default function FormBuilder() {
   ]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>("f_1");
   const [shareModalForm, setShareModalForm] = useState<CustomForm | null>(null);
+  const [qrSvgString, setQrSvgString] = useState<string>("");
   const [toast, setToast] = useState("");
 
   const refreshData = () => {
@@ -173,16 +120,48 @@ export default function FormBuilder() {
     }
   };
 
-  // Share URL Generator
+  // Generate real share URL
   const getShareUrl = (formId: string) => {
     const origin = window.location.origin;
     return `${origin}/?formId=${formId}`;
+  };
+
+  // Open Share Modal & Generate standard QR Code
+  const handleOpenShare = (form: CustomForm) => {
+    setShareModalForm(form);
+    const url = getShareUrl(form.id);
+    const svg = generateQRCodeSVG(url, 220);
+    setQrSvgString(svg);
   };
 
   const handleWhatsAppShare = (form: CustomForm) => {
     const url = getShareUrl(form.id);
     const message = encodeURIComponent(`Please fill out the "${form.name}" for Nalanda International School here:\n${url}`);
     window.open(`https://api.whatsapp.com/send?text=${message}`, "_blank");
+  };
+
+  const handleDownloadQrPng = async (form: CustomForm) => {
+    const url = getShareUrl(form.id);
+    const dataUrl = await generateQRCodeDataURL(url, 600);
+    if (!dataUrl) return;
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `QR_${form.name.replace(/\s+/g, "_")}.png`;
+    a.click();
+    showToast("QR Code PNG downloaded!");
+  };
+
+  const handleDownloadQrSvg = (form: CustomForm) => {
+    const url = getShareUrl(form.id);
+    const svg = generateQRCodeSVG(url, 400);
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `QR_${form.name.replace(/\s+/g, "_")}.svg`;
+    a.click();
+    URL.revokeObjectURL(blobUrl);
+    showToast("QR Code SVG downloaded!");
   };
 
   return (
@@ -201,7 +180,7 @@ export default function FormBuilder() {
             Custom Form Builder & QR Sharing
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Create custom registration forms, share instantly via QR/WhatsApp, and collect responses.
+            Create custom registration forms, share instantly via scannable QR / WhatsApp, and collect responses.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -237,7 +216,7 @@ export default function FormBuilder() {
 
       {/* 1. SAVED FORMS TAB */}
       {tab === "list" && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <div className="text-xs font-semibold text-slate-700">All Published & Draft Forms</div>
             <button
@@ -251,7 +230,7 @@ export default function FormBuilder() {
                 ]);
                 setTab("builder");
               }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-xl text-white shadow-sm"
               style={{ background: "var(--primary)" }}
             >
               + Create New Form
@@ -293,8 +272,8 @@ export default function FormBuilder() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => setShareModalForm(f)}
-                            className="px-2.5 py-1 rounded-md text-xs font-semibold text-white flex items-center gap-1 shadow-xs"
+                            onClick={() => handleOpenShare(f)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-xs transition-transform hover:scale-105"
                             style={{ background: "#25D366" }}
                             title="Share via QR Code & WhatsApp"
                           >
@@ -339,7 +318,7 @@ export default function FormBuilder() {
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -387,7 +366,7 @@ export default function FormBuilder() {
       {tab === "builder" && (
         <div className="grid lg:grid-cols-12 gap-5 min-h-[600px]">
           {/* Left: Palette */}
-          <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 h-fit">
+          <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-100 shadow-sm p-4 h-fit">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">
               Add Form Elements
             </div>
@@ -411,7 +390,7 @@ export default function FormBuilder() {
           {/* Center: Canvas */}
           <div className="lg:col-span-6 space-y-4">
             {/* Form Title Card */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-3">
               <div>
                 <label className="text-[11px] font-semibold text-slate-500 block mb-1">Form Name / Title</label>
                 <input
@@ -451,7 +430,7 @@ export default function FormBuilder() {
             {/* Field Canvas Items */}
             <div className="space-y-3">
               {fields.length === 0 ? (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center text-slate-400 text-xs">
+                <div className="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-12 text-center text-slate-400 text-xs">
                   Click on any form element on the left to add it here.
                 </div>
               ) : (
@@ -519,7 +498,7 @@ export default function FormBuilder() {
           </div>
 
           {/* Right: Field Settings Inspector */}
-          <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 h-fit space-y-4">
+          <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-100 shadow-sm p-4 h-fit space-y-4">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               Field Settings
             </div>
@@ -543,7 +522,7 @@ export default function FormBuilder() {
                         className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none"
                       />
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50">
                       <span className="font-semibold text-slate-700">Required Field</span>
                       <input
                         type="checkbox"
@@ -575,56 +554,77 @@ export default function FormBuilder() {
         </div>
       )}
 
-      {/* SHARE MODAL (QR CODE & WHATSAPP) */}
+      {/* SHARE MODAL (WITH STANDARD SCANNABLE QR CODE & DOWNLOAD ACTIONS) */}
       {shareModalForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md text-center">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+          <div className="bg-white rounded-3xl shadow-2xl p-7 w-full max-w-md text-center space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-lg" style={{ fontFamily: "DM Serif Display, serif" }}>
-                Share Form
+                Scan & Share Form
               </h3>
-              <button onClick={() => setShareModalForm(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button onClick={() => setShareModalForm(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
             </div>
 
-            <div className="font-semibold text-slate-800 text-sm mb-1">{shareModalForm.name}</div>
-            <p className="text-xs text-slate-500 mb-4">Scan QR code or share directly via WhatsApp to collect instant submissions.</p>
+            <div>
+              <div className="font-bold text-slate-900 text-sm">{shareModalForm.name}</div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Scan with any smartphone camera / WhatsApp to open and submit this form directly.
+              </p>
+            </div>
 
-            {/* QR Code */}
-            <div className="flex justify-center mb-5">
-              <QRCodeSVG value={getShareUrl(shareModalForm.id)} size={180} />
+            {/* Scannable QR Code Canvas / SVG */}
+            <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
+              <div
+                className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm"
+                dangerouslySetInnerHTML={{ __html: qrSvgString }}
+              />
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={() => handleDownloadQrPng(shareModalForm)}
+                  className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-xs flex items-center gap-1"
+                >
+                  <span>🖼️</span> Download PNG
+                </button>
+                <button
+                  onClick={() => handleDownloadQrSvg(shareModalForm)}
+                  className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-xs flex items-center gap-1"
+                >
+                  <span>📐</span> Download SVG
+                </button>
+              </div>
             </div>
 
             {/* Share URL copy box */}
-            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 mb-4 text-xs font-mono text-slate-600 overflow-hidden">
-              <span className="truncate flex-1 text-left px-1">{getShareUrl(shareModalForm.id)}</span>
+            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-600 overflow-hidden">
+              <span className="truncate flex-1 text-left px-1.5 font-sans text-xs">{getShareUrl(shareModalForm.id)}</span>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(getShareUrl(shareModalForm.id));
-                  showToast("Share link copied to clipboard!");
+                  showToast("Direct form link copied!");
                 }}
-                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 shrink-0"
               >
-                Copy
+                Copy Link
               </button>
             </div>
 
-            {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Direct Social / Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <button
                 onClick={() => handleWhatsAppShare(shareModalForm)}
-                className="py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-sm hover:opacity-95"
+                className="py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-sm hover:opacity-95 transition-all"
                 style={{ background: "#25D366" }}
               >
-                <span>💬</span> WhatsApp Share
+                <span>💬</span> Share on WhatsApp
               </button>
               <button
                 onClick={() => {
                   window.open(getShareUrl(shareModalForm.id), "_blank");
                 }}
-                className="py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-sm hover:opacity-95"
+                className="py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-sm hover:opacity-95 transition-all"
                 style={{ background: "var(--primary)" }}
               >
-                <span>🌐</span> Open Form
+                <span>🌐</span> Open in Browser
               </button>
             </div>
           </div>
