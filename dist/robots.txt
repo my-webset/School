@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Disallow admin panel
+Disallow: /?admin
+Disallow: /?view=adminLogin
+Disallow: /?view=adminDashboard
+
+# Sitemap
+Sitemap: https://nalandainternational.edu.in/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 10
