@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Paper Generator Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Arial', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      html, body, #root {
+        margin: 0;
+        min-height: 100%;
+        height: 100%;
+        font-family: Arial, sans-serif;
+        background: #f8fafc;
+      }
+      * { box-sizing: border-box; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="module">
+      import * as React from 'https://esm.sh/react@18.3.1';
+      import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
+      const { useRef, useState } = React;
+
+      const QUESTION_FORMATS = [
+        { key: 'mcq', label: 'MCQ (1 Mark)' },
+        { key: 'very_short', label: 'Very Short (2 Marks)' },
+        { key: 'short', label: 'Short Ans (3 Marks)' },
+        { key: 'long', label: 'Long Ans (5 Marks)' },
+        { key: 'true_false', label: 'True / False' },
+        { key: 'fill_blank', label: 'Fill in Blanks' },
+      ];
+
+      const SCHOOL_INFO = {
+        name: 'Nalanda International School',
+        address: '14, Vidya Vihar, Sector 21, Noida, Uttar Pradesh – 201301',
+        affiliation: 'CBSE/AFF/2130124',
+      };
+
+      function mockGeneratePaper({ blueprint, instruction, previousPaper, imageCount }) {
+        const isFreshGeneration = /^(generate|create|regenerate)\b/i.test(instruction.trim());
+        const wantsAnswerKey = /answer\s*key/i.test(instruction);
+        const base = isFreshGeneration ? null : previousPaper;
+        const paper = base || {
+          examTitle: blueprint.examType.toUpperCase(),
+          session: 'SESSION 2026-27',
+          subject: blueprint.subject,
+          className: blueprint.className,
+          timeAllowed: blueprint.duration,
+          maximumMarks: blueprint.totalMarks,
+          generalInstructions: [
+            'All questions are compulsory. Internal choice is provided in selected long-answer questions.',
+            'Section A contains objective questions carrying 1 mark each.',
+            'Section B contains short-answer questions carrying 2 and 3 marks each.',
+            'Section C contains comprehensive analytical questions carrying 5 marks each.',
+            'Write your answers in clear, legible handwriting with question numbers properly indexed.',
+            'Neat, labelled diagrams should be drawn wherever appropriate.',
+          ],
+          sections: [
+            {
+              sectionLabel: 'SECTION A',
+              sectionTitle: '(OBJECTIVE & CONCEPTUAL)',
+              sectionNote: 'Multiple choice questions, fill in the blanks, and true/false (1 Mark each)',
+              questions: [
+                {
+                  number: 1,
+                  type: 'mcq',
+                  text: 'Which of the following fundamental principles is central to Real Numbers?',
+                  marks: 1,
+                  options: ['(A) Euclid\'s Division Lemma', '(B) Axiom of Determinism', '(C) Standard Equivalence', '(D) Uniform Distribution'],
+                },
+                {
+                  number: 2,
+                  type: 'fill_blank',
+                  text: 'The degree of a quadratic polynomial is ______.',
+                  marks: 1,
+                  options: null,
+                },
+                {
+                  number: 3,
+                  type: 'true_false',
+                  text: 'Every rational number is also a real number.',
+                  marks: 1,
+                  options: null,
+                },
+              ],
+            },
+            {
+              sectionLabel: 'SECTION B',
+              sectionTitle: '(SHORT ANSWER)',
+              sectionNote: 'Answer briefly with working shown (2–3 Marks each)',
+              questions: [
+                { number: 4, type: 'short', text: 'Find the zeroes of the polynomial p(x) = x² − 5x + 6.', marks: 2, options: null },
+                { number: 5, type: 'short', text: 'Solve for x and y: 2x + 3y = 12 and x − y = 1.', marks: 3, options: null },
+              ],
+            },
+            {
+              sectionLabel: 'SECTION C',
+              sectionTitle: '(LONG ANSWER / ANALYTICAL)',
+              sectionNote: 'Comprehensive analytical questions (5 Marks each)',
+              questions: [
+                {
+                  number: 6,
+                  type: 'long',
+                  text: 'Prove that √5 is an irrational number.',
+                  marks: 5,
+                  options: null,
+                },
+              ],
+            },
+          ],
+          answerKey: null,
+        };
+
+        paper.examTitle = blueprint.examType.toUpperCase();
+        paper.subject = blueprint.subject;
+        paper.className = blueprint.className;
+        paper.timeAllowed = blueprint.duration;
+        paper.maximumMarks = blueprint.totalMarks;
+        paper.referenceImageCount = imageCount;
+
+        if (wantsAnswerKey) {
+          paper.answerKey = [
+            { number: 1, answer: 'A' },
+            { number: 2, answer: '2' },
+            { number: 3, answer: 'True' },
+            { number: 4, answer: 'x = 2, 3' },
+            { number: 5, answer: 'x = 3, y = 2' },
+            { number: 6, answer: 'Proof by contradiction — see marking scheme' },
+          ];
+        }
+
+        if (/harder/i.test(instruction) && paper.sections[2]) {
+          paper.sections[2].questions[0].text = 'Prove that √5 is irrational, and hence show that 3 + 2√5 is also irrational.';
+        }
+
+        if (/add.*mcq|more mcq/i.test(instruction)) {
+          const sectionA = paper.sections[0];
+          const nextNum = Math.max(...paper.sections.flatMap((s) => s.questions.map((q) => q.number))) + 1;
+          sectionA.questions.push({
+            number: nextNum,
+            type: 'mcq',
+            text: 'The pair of linear equations 2x + y = 5 and 4x + 2y = 10 represents lines that are:',
+            marks: 1,
+            options: ['(A) Intersecting', '(B) Parallel', '(C) Coincident', '(D) Perpendicular'],
+          });
+        }
+
+        return JSON.parse(JSON.stringify(paper));
+      }
+
+      function AIPaperGeneratorPreview() {
+        const [blueprint, setBlueprint] = useState({
+          subject: 'Mathematics',
+          className: 'Class X',
+          examType: 'Half-Yearly Examination',
+          totalMarks: 80,
+          duration: '3 Hours',
+          difficulty: 'Mixed (Standard)',
+          chapters: 'Real Numbers, Polynomials, Linear Equations, Quadratic Equations, Trigonometry',
+          formats: { mcq: true, very_short: true, short: true, long: true, true_false: true, fill_blank: true },
+        });
+
+        const [images, setImages] = useState([]);
+        const [chatLog, setChatLog] = useState([]);
+        const [instruction, setInstruction] = useState('');
+        const [paper, setPaper] = useState(null);
+        const [showAnswerKey, setShowAnswerKey] = useState(false);
+        const [loading, setLoading] = useState(false);
+        const fileInputRef = useRef(null);
+        const chatEndRef = useRef(null);
+
+        const updateField = (field, value) => setBlueprint((b) => ({ ...b, [field]: value }));
+        const toggleFormat = (key) => setBlueprint((b) => ({ ...b, formats: { ...b.formats, [key]: !b.formats[key] } }));
+
+        function handleImagePick(e) {
+          const picked = Array.from(e.target.files || []);
+          setImages((prev) => [...prev, ...picked].slice(0, 7));
+          e.target.value = '';
+        }
+
+        function removeImage(idx) {
+          setImages((prev) => prev.filter((_, i) => i !== idx));
+        }
+
+        async function runInstruction(text) {
+          const cmd = (text ?? instruction).trim();
+          if (!cmd || loading) return;
+
+          setChatLog((log) => [...log, { role: 'user', text: cmd }]);
+          setInstruction('');
+          setLoading(true);
+
+          try {
+            const form = new FormData();
+            form.append('instruction', cmd);
+            form.append('blueprint', JSON.stringify(blueprint));
+            form.append('schoolInfo', JSON.stringify(SCHOOL_INFO));
+            form.append('history', JSON.stringify(chatLog
+              .filter((message) => message.role === 'user' || message.role === 'assistant')
+              .map((message) => ({ role: message.role, content: message.text }))));
+            images.slice(0, 7).forEach((file) => form.append('images', file));
+
+            const response = await fetch('/api/ai-paper/generate', { method: 'POST', body: form });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              throw new Error(result.error || `Generation failed (${response.status}).`);
+            }
+            if (!result.paper || !Array.isArray(result.paper.sections)) {
+              throw new Error('The AI returned an invalid paper response.');
+            }
+
+            setPaper(result.paper);
+            if (result.paper.answerKey) setShowAnswerKey(true);
+            setChatLog((log) => [...log, { role: 'status', text: '✅ Real AI paper generated successfully.' }]);
+          } catch (error) {
+            setChatLog((log) => [...log, { role: 'status', text: `❌ ${error.message}` }]);
+          } finally {
+            setLoading(false);
+            setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+          }
+        }
+
+        function handleDownloadWord() {
+          if (!paper) return;
+          const html = buildWordHtml(paper, SCHOOL_INFO);
+          const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${paper.subject.replace(/\s+/g, '_')}_${paper.className.replace(/\s+/g, '_')}.doc`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+
+        return React.createElement(
+          'div',
+          { className: 'min-h-screen bg-slate-50 p-4 md:p-6' },
+          React.createElement(
+            'div',
+            { className: 'grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5 max-w-6xl mx-auto' },
+            React.createElement(
+              'div',
+              { className: 'bg-white rounded-xl border border-slate-200 p-5 h-fit' },
+              React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+                React.createElement('h2', { className: 'font-semibold text-slate-800 text-sm tracking-wide' }, 'EXAM BLUEPRINT'),
+                React.createElement('span', { className: 'text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded-full font-medium' }, 'CBSE Aligned')
+              ),
+              React.createElement('label', { className: 'block text-sm text-slate-500 mb-2' }, 'Reference Images (Optional, max 7)'),
+              React.createElement(
+                'div',
+                {
+                  className: 'border-2 border-dashed border-slate-200 rounded-lg p-4 text-center cursor-pointer mb-2 hover:border-blue-300 transition-colors',
+                  onClick: () => fileInputRef.current?.click(),
+                },
+                React.createElement('p', { className: 'text-sm font-medium text-slate-700' }, 'Click to select images'),
+                React.createElement('p', { className: 'text-xs text-slate-400 mt-0.5' }, 'Syllabus pages, sample papers, diagrams — up to 7'),
+                React.createElement('input', { ref: fileInputRef, type: 'file', accept: 'image/*', multiple: true, hidden: true, onChange: handleImagePick })
+              ),
+              images.length > 0 && React.createElement(
+                'div',
+                { className: 'grid grid-cols-4 gap-2 mb-4' },
+                ...images.map((file, idx) =>
+                  React.createElement(
+                    'div',
+                    { key: idx, className: 'relative' },
+                    React.createElement('img', { src: URL.createObjectURL(file), alt: '', className: 'w-full h-14 object-cover rounded-md border border-slate-200' }),
+                    React.createElement('button', { onClick: () => removeImage(idx), className: 'absolute -top-1.5 -right-1.5 bg-slate-800 text-white rounded-full w-4 h-4 text-[10px] leading-4' }, '×')
+                  )
+                ),
+                React.createElement('span', { className: 'text-[11px] text-slate-400 col-span-4' }, `${images.length}/7 images`)
+              ),
+              React.createElement(Field, { label: 'Subject' }, React.createElement('input', { className: 'fld', value: blueprint.subject, onChange: (e) => updateField('subject', e.target.value) })),
+              React.createElement(Field, { label: 'Class / Grade' }, React.createElement('input', { className: 'fld', value: blueprint.className, onChange: (e) => updateField('className', e.target.value) })),
+              React.createElement(Field, { label: 'Exam Type' }, React.createElement('input', { className: 'fld', value: blueprint.examType, onChange: (e) => updateField('examType', e.target.value) })),
+              React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+                React.createElement(Field, { label: 'Total Marks' }, React.createElement('input', { type: 'number', className: 'fld', value: blueprint.totalMarks, onChange: (e) => updateField('totalMarks', Number(e.target.value)) })),
+                React.createElement(Field, { label: 'Time Duration' }, React.createElement('input', { className: 'fld', value: blueprint.duration, onChange: (e) => updateField('duration', e.target.value) }))
+              ),
+              React.createElement(Field, { label: 'Difficulty' }, React.createElement('input', { className: 'fld', value: blueprint.difficulty, onChange: (e) => updateField('difficulty', e.target.value) })),
+              React.createElement(Field, { label: 'Chapters & Topics' }, React.createElement('textarea', { className: 'fld min-h-[64px]', value: blueprint.chapters, onChange: (e) => updateField('chapters', e.target.value) })),
+              React.createElement('label', { className: 'block text-sm text-slate-500 mb-2 mt-1' }, 'Question Formats'),
+              React.createElement('div', { className: 'grid grid-cols-2 gap-y-2 gap-x-1 mb-1' },
+                ...QUESTION_FORMATS.map((f) =>
+                  React.createElement(
+                    'label',
+                    { key: f.key, className: 'flex items-center gap-2 text-sm text-slate-700' },
+                    React.createElement('input', { type: 'checkbox', checked: !!blueprint.formats[f.key], onChange: () => toggleFormat(f.key) }),
+                    f.label
+                  )
+                )
+              )
+            ),
+            React.createElement(
+              'div',
+              { className: 'flex flex-col gap-4 min-w-0' },
+              React.createElement(
+                'div',
+                { className: 'flex flex-wrap items-center justify-between gap-2' },
+                React.createElement('div', { className: 'flex gap-2' },
+                  React.createElement(ToolbarButton, { onClick: () => runInstruction('Regenerate the paper from scratch using the same blueprint.'), disabled: !paper || loading }, '↻ Regenerate'),
+                  React.createElement(ToolbarButton, { onClick: () => setShowAnswerKey((s) => !s), disabled: !paper }, `${showAnswerKey ? 'Hide' : 'Show'} Answer Key`),
+                  React.createElement(ToolbarButton, { onClick: () => runInstruction('Save this paper to the library, no changes needed.'), disabled: !paper || loading }, '💾 Save to Library')
+                ),
+                React.createElement(ToolbarButton, { primary: true, onClick: handleDownloadWord, disabled: !paper }, '⬇ Download as Word')
+              ),
+              React.createElement(
+                'div',
+                { className: 'bg-white rounded-xl border border-slate-200 p-6 md:p-8 min-h-[380px] overflow-x-auto' },
+                !paper && !loading && React.createElement('p', { className: 'text-center text-slate-400 mt-20 text-sm' }, 'Type what paper you need in the chat below — e.g. "Generate the paper" — to see a live preview here.'),
+                loading && !paper && React.createElement('p', { className: 'text-center text-slate-400 mt-20 text-sm' }, 'Generating…'),
+                paper && React.createElement(PaperPreview, { paper, showAnswerKey, schoolInfo: SCHOOL_INFO })
+              ),
+              React.createElement(
+                'div',
+                { className: 'bg-white rounded-xl border border-slate-200 p-3' },
+                React.createElement('div', { className: 'max-h-36 overflow-y-auto space-y-2 mb-2 px-1' },
+                  chatLog.length === 0 && React.createElement('p', { className: 'text-xs text-slate-400 italic px-1' }, 'Try: "Generate the paper", then "add an MCQ", then "show answer key".'),
+                  ...chatLog.map((m, i) => React.createElement('div', { key: i, className: m.role === 'user' ? 'text-sm bg-slate-100 rounded-lg px-3 py-1.5 w-fit ml-auto text-slate-800 max-w-[80%]' : 'text-xs text-slate-500 italic' }, m.text)),
+                  loading && React.createElement('div', { className: 'text-xs text-slate-400 italic' }, 'thinking…'),
+                  React.createElement('div', { ref: chatEndRef })
+                ),
+                  React.createElement('div', { className: 'flex gap-2' },
+                    React.createElement('button', { className: 'bg-emerald-700 hover:bg-emerald-800 transition-colors text-white px-4 py-2 rounded-lg text-sm disabled:opacity-40 font-medium', onClick: () => runInstruction('Create paper from the current blueprint and uploaded images.'), disabled: loading }, 'Create Paper'),
+                  React.createElement('input', {
+                    className: 'fld flex-1 !mb-0',
+                    placeholder: 'e.g. "Generate the paper" or "Make Section C harder"',
+                    value: instruction,
+                    onChange: (e) => setInstruction(e.target.value),
+                    onKeyDown: (e) => e.key === 'Enter' && runInstruction(),
+                    disabled: loading,
+                  }),
+                  React.createElement('button', { className: 'bg-blue-900 hover:bg-blue-950 transition-colors text-white px-4 py-2 rounded-lg text-sm disabled:opacity-40 font-medium', onClick: () => runInstruction(), disabled: loading || !instruction.trim() }, 'Send')
+                )
+              )
+            )
+          )
+        );
+      }
+
+      function Field({ label, children }) {
+        return React.createElement(
+          'div',
+          null,
+          React.createElement('label', { className: 'block text-sm text-slate-500 mb-1' }, label),
+          children
+        );
+      }
+
+      function ToolbarButton({ children, onClick, disabled, primary }) {
+        return React.createElement(
+          'button',
+          {
+            onClick,
+            disabled,
+            className: `${primary ? 'bg-blue-900 hover:bg-blue-950 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'} px-3 py-2 rounded-lg text-sm disabled:opacity-40 transition-colors font-medium`,
+          },
+          children
+        );
+      }
+
+      function PaperPreview({ paper, showAnswerKey, schoolInfo }) {
+        return React.createElement(
+          'div',
+          { className: 'text-slate-900 min-w-[560px]' },
+          React.createElement('div', { className: 'text-center' },
+            React.createElement('h1', { className: 'text-xl font-bold' }, schoolInfo.name),
+            React.createElement('p', { className: 'text-sm italic text-slate-600' }, schoolInfo.address),
+            React.createElement('p', { className: 'text-sm text-slate-700' }, `Affiliation: ${schoolInfo.affiliation} | CBSE (Central Board of Secondary Education)`),
+            React.createElement('h2', { className: 'font-bold mt-2' }, `${paper.examTitle} (${paper.session})`)
+          ),
+          React.createElement('div', { className: 'flex justify-between border-b border-t border-slate-800 py-2 mt-4 text-sm font-semibold' },
+            React.createElement('span', null, `SUBJECT: ${paper.subject?.toUpperCase()}`),
+            React.createElement('span', null, `CLASS: ${paper.className?.toUpperCase()}`)
+          ),
+          React.createElement('div', { className: 'flex justify-between text-sm font-semibold mb-4' },
+            React.createElement('span', null, `TIME ALLOWED: ${paper.timeAllowed}`),
+            React.createElement('span', null, `MAXIMUM MARKS: ${paper.maximumMarks}`)
+          ),
+          React.createElement('div', { className: 'bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4' },
+            React.createElement('p', { className: 'font-semibold underline mb-2 text-sm' }, 'GENERAL INSTRUCTIONS:'),
+            React.createElement('ol', { className: 'list-decimal list-inside text-sm space-y-1 text-slate-700' },
+              ...paper.generalInstructions?.map((line, i) => React.createElement('li', { key: i }, line))
+            )
+          ),
+          ...paper.sections?.map((section, si) =>
+            React.createElement('div', { key: si, className: 'mb-5' },
+              React.createElement('p', { className: 'text-center font-bold text-sm' }, `${section.sectionLabel} ${section.sectionTitle}`),
+              section.sectionNote && React.createElement('p', { className: 'text-center italic text-sm mb-2 text-slate-600' }, section.sectionNote),
+              ...section.questions?.map((q) =>
+                React.createElement('div', { key: q.number },
+                  React.createElement('div', { className: 'flex justify-between text-sm mb-1 gap-4' },
+                    React.createElement('span', null, `${q.number}. ${q.text}`),
+                    React.createElement('span', { className: 'font-semibold whitespace-nowrap' }, `[${q.marks} Mark${q.marks === 1 ? '' : 's'}]`)
+                  ),
+                  q.type === 'mcq' && q.options && React.createElement('div', { className: 'pl-4 text-sm text-slate-700 grid grid-cols-2 gap-x-4 mb-2' }, ...q.options.map((opt, oi) => React.createElement('p', { key: oi }, opt)))
+                )
+              )
+            )
+          ),
+          showAnswerKey && paper.answerKey?.length > 0 && React.createElement('div', { className: 'mt-6' },
+            React.createElement('p', { className: 'text-center font-bold mb-2 text-sm' }, 'ANSWER KEY'),
+            React.createElement('table', { className: 'w-full text-sm border border-slate-300' },
+              React.createElement('thead', null,
+                React.createElement('tr', { className: 'bg-slate-100' },
+                  React.createElement('th', { className: 'border border-slate-300 py-1' }, 'Q. No.'),
+                  React.createElement('th', { className: 'border border-slate-300 py-1' }, 'Answer')
+                )
+              ),
+              React.createElement('tbody', null,
+                ...paper.answerKey.map((a) =>
+                  React.createElement('tr', { key: a.number },
+                    React.createElement('td', { className: 'border border-slate-300 text-center py-1' }, a.number),
+                    React.createElement('td', { className: 'border border-slate-300 text-center py-1' }, a.answer)
+                  )
+                )
+              )
+            )
+          )
+        );
+      }
+
+      function buildWordHtml(paper, schoolInfo) {
+        const instructions = paper.generalInstructions.map((l, i) => `<li>${l}</li>`).join('');
+        const sections = paper.sections.map((s) => {
+          const qs = s.questions.map((q) => `<p>${q.number}. ${q.text} <b>[${q.marks} Mark${q.marks === 1 ? '' : 's'}]</b></p>` + (q.options ? q.options.map((o) => `<p style="margin-left:24px">${o}</p>`).join('') : '')).join('');
+          return `<h4 style="text-align:center">${s.sectionLabel} ${s.sectionTitle}</h4><p style="text-align:center"><i>${s.sectionNote || ''}</i></p>${qs}`;
+        }).join('');
+
+        const answerKey = paper.answerKey ? `<h3 style="text-align:center">ANSWER KEY</h3><table border="1" style="width:100%;border-collapse:collapse"><tr><th>Q. No.</th><th>Answer</th></tr>${paper.answerKey.map((a) => `<tr><td style="text-align:center">${a.number}</td><td style="text-align:center">${a.answer}</td></tr>`).join('')}</table>` : '';
+
+        return `<html><head><meta charset="utf-8"></head><body>
+          <h2 style="text-align:center">${schoolInfo.name}</h2>
+          <p style="text-align:center"><i>${schoolInfo.address}</i></p>
+          <p style="text-align:center">Affiliation: ${schoolInfo.affiliation} | CBSE</p>
+          <h3 style="text-align:center">${paper.examTitle} (${paper.session})</h3>
+          <p><b>SUBJECT: ${paper.subject?.toUpperCase()}</b> &nbsp;&nbsp;&nbsp; <b>CLASS: ${paper.className?.toUpperCase()}</b></p>
+          <p><b>TIME ALLOWED: ${paper.timeAllowed}</b> &nbsp;&nbsp;&nbsp; <b>MAXIMUM MARKS: ${paper.maximumMarks}</b></p>
+          <p><u><b>GENERAL INSTRUCTIONS:</b></u></p>
+          <ol>${instructions}</ol>
+          ${sections}
+          ${answerKey}
+        </body></html>`;
+      }
+
+      const root = createRoot(document.getElementById('root'));
+      root.render(React.createElement(AIPaperGeneratorPreview));
+    </script>
+  </body>
+</html>

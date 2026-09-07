@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+:root {
+  --background: #f8f9fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --primary: #1a3a6e;
+  --primary-foreground: #ffffff;
+  --secondary: #e8edf6;
+  --secondary-foreground: #1a3a6e;
+  --muted: #f1f4f9;
+  --muted-foreground: #64748b;
+  --accent: #c8a84b;
+  --accent-foreground: #1a1a1a;
+  --border: #e2e8f0;
+  --ring: #1a3a6e;
+  --radius: 0.5rem;
+  --sidebar: #0f2147;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-muted: #1e3460;
+  --sidebar-accent: #c8a84b;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+h1, h2, h3 {
+  font-family: 'DM Serif Display', serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
