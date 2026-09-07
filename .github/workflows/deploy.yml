@@ -38,6 +38,9 @@ jobs:
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
 
+      - name: Add legacy logo path to artifact
+        run: cp -R dist/logos dist/logo
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
