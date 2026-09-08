@@ -1,9 +1,18 @@
+# Dependencies
 node_modules/
+ai\ paper\ gnerator/node_modules/
+
+# Build artifacts
 dist/
 build/
 .cache/
-.env*
 .vite/
+
+# Environment files
+.env.local
+.env.*.local
+
+# Logs and debug files
 vite.config.*.timestamp-*
 *.tsbuildinfo
 *-debug.log*
@@ -12,9 +21,6 @@ logs/
 .claude-replay.*
 .tmp-*
 
-# Platform-managed agentplat state, not project source. In the
-# client-initiated single-repo workspace layout (make's `Path: "."` spec) the
-# repo root IS the workspace root, so these land inside this repo rather than
-# beside it.
+# System & platform directories
 /.plugins/
 /.opencode-skills/

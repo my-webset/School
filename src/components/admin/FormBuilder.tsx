@@ -120,11 +120,20 @@ export default function FormBuilder() {
     }
   };
 
-  // Generate real share URL
+  // Generate real share URL (Preserves GitHub Pages subpath and Vercel origin cleanly)
   const getShareUrl = (formId: string) => {
-    const origin = window.location.origin;
-    return `${origin}/?formId=${formId}`;
+    try {
+      const url = new URL(window.location.href);
+      url.search = `?formId=${encodeURIComponent(formId)}`;
+      url.hash = "";
+      return url.toString();
+    } catch {
+      const origin = window.location.origin || "";
+      const pathname = window.location.pathname || "/";
+      return `${origin}${pathname}?formId=${encodeURIComponent(formId)}`;
+    }
   };
+
 
   // Open Share Modal & Generate standard QR Code
   const handleOpenShare = (form: CustomForm) => {

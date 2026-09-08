@@ -135,7 +135,11 @@ export default function AdmissionsManager() {
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-lg p-8 max-w-3xl mx-auto">
+          <div
+            id="printable-admission-slip"
+            className="bg-white rounded-3xl border border-slate-100 shadow-lg p-8 max-w-3xl mx-auto"
+          >
+
             {/* School Header */}
             <div className="text-center pb-6 border-b border-slate-200 mb-6 flex flex-col items-center">
               <img src={LOGOS.schoolLogo} alt="Logo" className="w-16 h-16 object-contain mb-2" />

@@ -24,17 +24,29 @@ export default function App() {
 
   // Check URL parameters for direct Form sharing (QR code / WhatsApp link)
   useEffect(() => {
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const formId = urlParams.get("formId");
-      if (formId) {
-        setActiveCustomFormId(formId);
-        setView("customForm");
+    const checkFormId = () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        let formId = urlParams.get("formId");
+        if (!formId && window.location.hash.includes("formId=")) {
+          const hashQuery = window.location.hash.replace(/^#\/?\??/, "");
+          const hashParams = new URLSearchParams(hashQuery);
+          formId = hashParams.get("formId");
+        }
+        if (formId) {
+          setActiveCustomFormId(formId);
+          setView("customForm");
+        }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+
+    checkFormId();
+    window.addEventListener("popstate", checkFormId);
+    return () => window.removeEventListener("popstate", checkFormId);
   }, []);
+
 
   // Check existing session
   useEffect(() => {

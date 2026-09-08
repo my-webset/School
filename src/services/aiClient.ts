@@ -1,10 +1,12 @@
 // src/services/aiClient.ts
 // Direct client for aicredits.in OpenAI-compatible endpoint with image support and structured JSON output
 
+const env = (import.meta as any).env ?? {};
+
 export const AICREDITS_CONFIG = {
-  baseUrl: "https://aicredits.in/v1",
-  apiKey: "sk-live-e23310304a94d384f2cd19157f2b7c0955645f2de7a9ae350e9438cf0d0e5415",
-  model: "gpt-4o-mini",
+  baseUrl: env.VITE_AICREDITS_BASE_URL || "https://aicredits.in/v1",
+  apiKey: env.VITE_AICREDITS_API_KEY || "",
+  model: env.VITE_AICREDITS_MODEL || "gpt-4o-mini",
 };
 
 export interface PaperQuestion {

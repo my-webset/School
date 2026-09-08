@@ -43,8 +43,75 @@ h1, h2, h3 {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Scrollbar */
+/* Custom Smooth Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ==============================================================================
+   HIGH-PRECISION PRINT STYLES FOR QUESTION PAPERS & ADMISSION SLIPS
+   ============================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+
+  /* 1. Hide everything on the page by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* 2. Show only the printable container and all its descendants */
+  #printable-exam-paper,
+  #printable-exam-paper *,
+  #printable-admission-slip,
+  #printable-admission-slip * {
+    visibility: visible !important;
+  }
+
+  /* 3. Re-anchor printable container to fill print page */
+  #printable-exam-paper,
+  #printable-admission-slip {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* 4. Force high-fidelity graphics and watermarks */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 5. Prevent unwanted page breaks inside question blocks */
+  .space-y-3 > div,
+  .space-y-4 > div,
+  .space-y-6 > div {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 6. Clean watermark opacity during printing */
+  .watermark-layer {
+    opacity: 0.04 !important;
+  }
+
+  /* 7. Hide non-printable helpers */
+  .no-print,
+  button,
+  input,
+  textarea {
+    display: none !important;
+  }
+}
