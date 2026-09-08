@@ -1,11 +1,9 @@
 // src/assets/logos.ts
-// Robust logo asset resolver supporting local Vite dev, Vercel root, and GitHub Pages subpath deployments.
+// Direct clean root-relative paths matching Vite public/ directory output
 
 const getAssetUrl = (filename: string) => {
-  const base = (import.meta.env.BASE_URL || "./").replace(/\/$/, "");
-  // Using encoded filename to avoid broken links on servers with strict URL handling
-  const encodedName = encodeURIComponent(filename).replace(/%2F/g, "/");
-  return base ? `${base}/logos/${encodedName}` : `logos/${encodedName}`;
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+  return `${base}/logos/${filename}`;
 };
 
 export const LOGOS = {

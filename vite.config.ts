@@ -8,7 +8,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Standard Clean Vite Configuration
 export default defineConfig({
-  base: './',
+  base: '/',
+
   plugins: [
     react(),
     tailwindcss(),
