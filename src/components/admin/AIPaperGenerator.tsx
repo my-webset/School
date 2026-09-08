@@ -42,127 +42,21 @@ export default function AIPaperGenerator() {
   const [savedPapers, setSavedPapers] = useState<Array<{ id: string; title: string; date: string; paper: AIPaperResult }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const DEFAULT_SAVED_PAPERS = [
-    {
-      id: "paper-default-math-10",
-      title: "Mathematics (Class X) - Half-Yearly Examination",
-      date: new Date().toISOString().split("T")[0],
-      paper: {
-        examTitle: "HALF-YEARLY EXAMINATION",
-        session: "SESSION 2026-27",
-        subject: "Mathematics",
-        className: "Class X",
-        timeAllowed: "3 Hours",
-        maximumMarks: 80,
-        generalInstructions: [
-          "All questions are compulsory. Internal choices are provided in Section C.",
-          "Section A comprises 4 objective / conceptual questions carrying 1 mark each.",
-          "Section B comprises 2 short answer questions carrying 2 and 3 marks each.",
-          "Section C comprises 2 long analytical questions carrying 5 marks each.",
-          "Draw neat, labelled geometric and coordinate diagrams wherever applicable.",
-        ],
-        sections: [
-          {
-            sectionLabel: "SECTION A",
-            sectionTitle: "(OBJECTIVE & CONCEPTUAL)",
-            sectionNote: "All questions in this section carry 1 mark each.",
-            questions: [
-              {
-                number: 1,
-                type: "mcq" as const,
-                text: "If the zeroes of the quadratic polynomial ax² + bx + c (where c ≠ 0) are equal, then:",
-                marks: 1,
-                options: ["(A) c and a have opposite signs", "(B) c and b have opposite signs", "(C) c and a have the same sign", "(D) c and b have the same sign"],
-              },
-              {
-                number: 2,
-                type: "mcq" as const,
-                text: "The value of (sin 30° + cos 30°) - (sin 60° + cos 60°) is:",
-                marks: 1,
-                options: ["(A) -1", "(B) 0", "(C) 1", "(D) √2"],
-              },
-              {
-                number: 3,
-                type: "fill_blank" as const,
-                text: "The discriminant of the quadratic equation 2x² - 4x + 3 = 0 is ________.",
-                marks: 1,
-              },
-              {
-                number: 4,
-                type: "true_false" as const,
-                text: "Every composite number can be expressed (factorized) uniquely as a product of primes. (True / False)",
-                marks: 1,
-              },
-            ],
-          },
-          {
-            sectionLabel: "SECTION B",
-            sectionTitle: "(SHORT ANSWER QUESTIONS)",
-            sectionNote: "Questions carry 2 and 3 marks each.",
-            questions: [
-              {
-                number: 5,
-                type: "short" as const,
-                text: "Prove that √5 is an irrational number using the method of contradiction.",
-                marks: 2,
-              },
-              {
-                number: 6,
-                type: "short" as const,
-                text: "Find the zeroes of the quadratic polynomial 6x² - 3 - 7x and verify the relationship between the zeroes and coefficients.",
-                marks: 3,
-              },
-            ],
-          },
-          {
-            sectionLabel: "SECTION C",
-            sectionTitle: "(LONG ANSWER & APPLICATION PROBLEMS)",
-            sectionNote: "Questions carry 5 marks each.",
-            questions: [
-              {
-                number: 7,
-                type: "long" as const,
-                text: "A motor boat whose speed is 18 km/h in still water takes 1 hour more to go 24 km upstream than to return downstream to the same spot. Find the speed of the stream.",
-                marks: 5,
-              },
-              {
-                number: 8,
-                type: "long" as const,
-                text: "Prove that: (sin θ - 2 sin³ θ) / (2 cos³ θ - cos θ) = tan θ. Also calculate its numerical value when θ = 45°.",
-                marks: 5,
-              },
-            ],
-          },
-        ],
-        answerKey: [
-          { number: 1, answer: "(C) c and a have the same sign (since D = b² - 4ac = 0 => 4ac = b² > 0)." },
-          { number: 2, answer: "(B) 0 [Calculation: (1/2 + √3/2) - (√3/2 + 1/2) = 0]." },
-          { number: 3, answer: "-8 (Since (-4)² - 4(2)(3) = 16 - 24 = -8; no real roots)." },
-          { number: 4, answer: "True (Fundamental Theorem of Arithmetic)." },
-          { number: 5, answer: "Let √5 = a/b (co-prime). 5b² = a² => 5|a. Let a = 5c => 5b² = 25c² => b² = 5c² => 5|b. Contradiction." },
-          { number: 6, answer: "Rewriting: 6x² - 7x - 3 = (2x - 3)(3x + 1) = 0. Zeroes: 3/2 and -1/3. Sum = 7/6 = -b/a, Product = -3/6 = -1/2 = c/a." },
-          { number: 7, answer: "Speed of stream = 6 km/h [Equation: 24/(18-s) - 24/(18+s) = 1 => 48s = 324 - s² => s² + 48s - 324 = 0 => s = 6]." },
-          { number: 8, answer: "Numerator = sin θ(1 - 2 sin² θ) = sin θ(cos 2θ); Denominator = cos θ(2 cos² θ - 1) = cos θ(cos 2θ). Ratio = tan θ. At θ = 45°, tan 45° = 1." },
-        ],
-      },
-    },
-  ];
-
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_SAVED_PAPERS);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           setSavedPapers(parsed);
           return;
         }
       }
-      setSavedPapers(DEFAULT_SAVED_PAPERS);
-      localStorage.setItem(STORAGE_SAVED_PAPERS, JSON.stringify(DEFAULT_SAVED_PAPERS));
+      localStorage.setItem(STORAGE_SAVED_PAPERS, JSON.stringify([]));
+      setSavedPapers([]);
     } catch (e) {
       console.error(e);
-      setSavedPapers(DEFAULT_SAVED_PAPERS);
+      setSavedPapers([]);
     }
   }, []);
 

@@ -22,14 +22,10 @@ export default function FormBuilder() {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [activeFormId, setActiveFormId] = useState<string>("new-form");
-  const [formName, setFormName] = useState("Custom Admission / Registration Form");
-  const [formDesc, setFormDesc] = useState("Please fill out this form to submit your details.");
-  const [fields, setFields] = useState<FormField[]>([
-    { id: "f_1", type: "text", label: "Full Name", placeholder: "Enter candidate name", required: true },
-    { id: "f_2", type: "tel", label: "Contact Phone Number", placeholder: "+91 XXXXX XXXXX", required: true },
-    { id: "f_3", type: "select", label: "Application Category", required: true, options: ["General Admission", "Sports Quota", "Scholarship", "Alumni Referral"] },
-  ]);
-  const [selectedFieldId, setSelectedFieldId] = useState<string>("f_1");
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [fields, setFields] = useState<FormField[]>([]);
+  const [selectedFieldId, setSelectedFieldId] = useState<string>("");
   const [shareModalForm, setShareModalForm] = useState<CustomForm | null>(null);
   const [qrSvgString, setQrSvgString] = useState<string>("");
   const [toast, setToast] = useState("");
@@ -117,6 +113,13 @@ export default function FormBuilder() {
     if (window.confirm("Are you sure you want to delete this custom form?")) {
       dataService.deleteForm(id);
       showToast("Form deleted.");
+    }
+  };
+
+  const handleDeleteSubmission = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this submitted form response?")) {
+      dataService.deleteSubmission(id);
+      showToast("Submitted form deleted.");
     }
   };
 
@@ -332,7 +335,7 @@ export default function FormBuilder() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: "var(--muted)" }}>
-                    {["Submission ID", "Form Name", "Submitted Time", "Captured Data"].map(h => (
+                    {["Submission ID", "Form Name", "Submitted Time", "Captured Data", "Actions"].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -340,7 +343,7 @@ export default function FormBuilder() {
                 <tbody>
                   {submissions.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-16 text-center text-slate-400 text-xs">
+                      <td colSpan={5} className="px-4 py-16 text-center text-slate-400 text-xs">
                         No responses submitted yet. Share your forms with QR codes or WhatsApp links to collect data!
                       </td>
                     </tr>
@@ -360,6 +363,14 @@ export default function FormBuilder() {
                               </span>
                             ))}
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleDeleteSubmission(sub.id)}
+                            className="text-xs font-semibold text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))
