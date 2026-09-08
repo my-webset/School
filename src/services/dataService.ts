@@ -477,6 +477,12 @@ export const INITIAL_GALLERY: GalleryItem[] = [
 class DataService {
   // Listeners for real-time reactivity across components
   private listeners: Set<() => void> = new Set();
+  private isSyncing = false;
+
+  constructor() {
+    // Automatically trigger background two-way sync with Supabase
+    this.syncFromSupabase();
+  }
 
   subscribe(listener: () => void) {
     this.listeners.add(listener);
@@ -487,6 +493,144 @@ class DataService {
     this.listeners.forEach(fn => {
       try { fn(); } catch (e) { console.error(e); }
     });
+  }
+
+  // --- TWO-WAY SUPABASE DATABASE SYNC ---
+  async syncFromSupabase() {
+    if (this.isSyncing) return;
+    this.isSyncing = true;
+
+    try {
+      // 1. Sync Admissions Table
+      const admissionsRes = await supabase.select("admissions", "order=created_at.desc");
+      if (admissionsRes.data && Array.isArray(admissionsRes.data)) {
+        if (admissionsRes.data.length > 0) {
+          const mapped: AdmissionApplication[] = admissionsRes.data.map((row: any) => ({
+            id: row.id,
+            studentName: row.student_name,
+            dob: row.dob,
+            gender: row.gender,
+            classApplying: row.class_applying,
+            fatherName: row.father_name,
+            motherName: row.mother_name,
+            phone: row.phone,
+            email: row.email,
+            address: row.address,
+            prevSchool: row.prev_school || undefined,
+            prevClass: row.prev_class || undefined,
+            academics: row.academics || undefined,
+            status: row.status,
+            notes: row.notes || undefined,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at || row.created_at,
+          }));
+          localStorage.setItem(KEY_ADMISSIONS, JSON.stringify(mapped));
+        } else {
+          // Database is clean/empty - seed initial admissions into Supabase
+          for (const app of INITIAL_ADMISSIONS) {
+            await supabase.insert("admissions", {
+              id: app.id,
+              student_name: app.studentName,
+              dob: app.dob,
+              gender: app.gender,
+              class_applying: app.classApplying,
+              father_name: app.fatherName,
+              mother_name: app.motherName,
+              phone: app.phone,
+              email: app.email,
+              address: app.address,
+              prev_school: app.prevSchool || null,
+              prev_class: app.prevClass || null,
+              academics: app.academics || null,
+              status: app.status,
+              notes: app.notes || null,
+              created_at: app.createdAt,
+            });
+          }
+        }
+      }
+
+      // 2. Sync Custom Forms Table
+      const formsRes = await supabase.select("custom_forms", "order=created_at.desc");
+      if (formsRes.data && Array.isArray(formsRes.data)) {
+        if (formsRes.data.length > 0) {
+          const mappedForms: CustomForm[] = formsRes.data.map((row: any) => ({
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            status: row.status,
+            createdAt: row.created_at ? row.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+            fields: typeof row.fields === "string" ? JSON.parse(row.fields) : (row.fields || []),
+            submissionsCount: 0,
+          }));
+          localStorage.setItem(KEY_FORMS, JSON.stringify(mappedForms));
+        } else {
+          for (const f of INITIAL_FORMS) {
+            await supabase.insert("custom_forms", {
+              id: f.id,
+              name: f.name,
+              description: f.description,
+              status: f.status,
+              fields: f.fields,
+              created_at: f.createdAt,
+            });
+          }
+        }
+      }
+
+      // 3. Sync Form Submissions Table
+      const submissionsRes = await supabase.select("form_submissions", "order=submitted_at.desc");
+      if (submissionsRes.data && Array.isArray(submissionsRes.data)) {
+        if (submissionsRes.data.length > 0) {
+          const mappedSubs: FormSubmission[] = submissionsRes.data.map((row: any) => ({
+            id: row.id,
+            formId: row.form_id,
+            formName: row.form_name,
+            data: typeof row.data === "string" ? JSON.parse(row.data) : (row.data || {}),
+            submittedAt: row.submitted_at,
+          }));
+          localStorage.setItem(KEY_SUBMISSIONS, JSON.stringify(mappedSubs));
+        } else {
+          for (const sub of INITIAL_SUBMISSIONS) {
+            await supabase.insert("form_submissions", {
+              id: sub.id,
+              form_id: sub.formId,
+              form_name: sub.formName,
+              data: sub.data,
+              submitted_at: sub.submittedAt,
+            });
+          }
+        }
+      }
+
+      // 4. Sync School Information
+      const schoolRes = await supabase.select("school_info", "id=eq.1");
+      if (schoolRes.data && Array.isArray(schoolRes.data) && schoolRes.data.length > 0) {
+        const row = schoolRes.data[0];
+        const mappedSchool: SchoolInfo = {
+          name: row.name || INITIAL_SCHOOL_INFO.name,
+          tagline: row.tagline || INITIAL_SCHOOL_INFO.tagline,
+          established: row.established || INITIAL_SCHOOL_INFO.established,
+          affiliationNo: row.affiliation_no || INITIAL_SCHOOL_INFO.affiliationNo,
+          board: row.board || INITIAL_SCHOOL_INFO.board,
+          principal: row.principal || INITIAL_SCHOOL_INFO.principal,
+          principalMessage: row.principal_message || INITIAL_SCHOOL_INFO.principalMessage,
+          address: row.address || INITIAL_SCHOOL_INFO.address,
+          phone: row.phone || INITIAL_SCHOOL_INFO.phone,
+          email: row.email || INITIAL_SCHOOL_INFO.email,
+          website: row.website || INITIAL_SCHOOL_INFO.website,
+          about: row.about || INITIAL_SCHOOL_INFO.about,
+          socials: typeof row.socials === "string" ? JSON.parse(row.socials) : (row.socials || INITIAL_SCHOOL_INFO.socials),
+        };
+        localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(mappedSchool));
+      }
+
+      this.notify();
+    } catch (err) {
+      console.warn("[DataService] Background Supabase sync notice:", err);
+    } finally {
+      this.isSyncing = false;
+    }
   }
 
   // --- ADMISSIONS ---
@@ -502,7 +646,6 @@ class DataService {
     } catch (e) {
       console.error(e);
     }
-    // Initialize with comprehensive dataset if empty
     this.saveAdmissions(INITIAL_ADMISSIONS);
     return INITIAL_ADMISSIONS;
   }
@@ -527,7 +670,7 @@ class DataService {
     apps.unshift(newApp);
     this.saveAdmissions(apps);
 
-    // Sync to Supabase table in background if configured
+    // Sync to Supabase table in background
     const supabasePayload = {
       id: newApp.id,
       student_name: newApp.studentName,
@@ -549,7 +692,7 @@ class DataService {
     };
 
     supabase.insert("admissions", supabasePayload).catch((err) => {
-      console.error("Supabase admissions insert failed:", err);
+      console.error("Supabase admissions insert error:", err);
     });
 
     return newApp;
@@ -569,7 +712,7 @@ class DataService {
       notes: apps[idx].notes || null,
       updated_at: apps[idx].updatedAt,
     }).catch((err) => {
-      console.error("Supabase admissions update failed:", err);
+      console.error("Supabase admissions update error:", err);
     });
     return true;
   }
@@ -616,12 +759,31 @@ class DataService {
       forms.unshift(form);
     }
     this.saveForms(forms);
+
+    // Sync to Supabase
+    supabase.insert("custom_forms", {
+      id: form.id,
+      name: form.name,
+      description: form.description,
+      status: form.status,
+      fields: form.fields,
+      created_at: form.createdAt,
+    }).catch(() => {
+      supabase.update("custom_forms", `id=eq.${form.id}`, {
+        name: form.name,
+        description: form.description,
+        status: form.status,
+        fields: form.fields,
+      });
+    });
+
     return form;
   }
 
   deleteForm(id: string): boolean {
     const forms = this.getForms().filter(f => f.id !== id);
     this.saveForms(forms);
+    supabase.delete("custom_forms", `id=eq.${id}`).catch(() => {});
     return true;
   }
 
@@ -639,7 +801,6 @@ class DataService {
     } catch (e) {
       console.error(e);
     }
-    // Initialize with comprehensive submissions history
     localStorage.setItem(KEY_SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
     if (formId) return INITIAL_SUBMISSIONS.filter(s => s.formId === formId);
     return INITIAL_SUBMISSIONS;
@@ -668,7 +829,7 @@ class DataService {
     };
 
     supabase.insert("form_submissions", supabasePayload).catch((err) => {
-      console.error("Supabase form submission insert failed:", err);
+      console.error("Supabase form submission insert error:", err);
     });
 
     // Update submissions count on form
@@ -711,12 +872,23 @@ class DataService {
     };
     notices.unshift(newNotice);
     this.saveNotices(notices);
+
+    supabase.insert("notices", {
+      id: newNotice.id,
+      title: newNotice.title,
+      date: newNotice.date,
+      category: newNotice.category,
+      published: newNotice.published,
+      description: newNotice.description,
+    }).catch(() => {});
+
     return newNotice;
   }
 
   deleteNotice(id: string): boolean {
     const notices = this.getNotices().filter(n => n.id !== id);
     this.saveNotices(notices);
+    supabase.delete("notices", `id=eq.${id}`).catch(() => {});
     return true;
   }
 
@@ -748,12 +920,24 @@ class DataService {
     };
     events.unshift(newEvent);
     this.saveEvents(events);
+
+    supabase.insert("events", {
+      id: newEvent.id,
+      name: newEvent.name,
+      date: newEvent.date,
+      time: newEvent.time,
+      location: newEvent.location,
+      description: newEvent.description,
+      published: newEvent.published,
+    }).catch(() => {});
+
     return newEvent;
   }
 
   deleteEvent(id: string): boolean {
     const events = this.getEvents().filter(e => e.id !== id);
     this.saveEvents(events);
+    supabase.delete("events", `id=eq.${id}`).catch(() => {});
     return true;
   }
 
@@ -785,12 +969,22 @@ class DataService {
     };
     items.unshift(newItem);
     this.saveGallery(items);
+
+    supabase.insert("gallery", {
+      id: newItem.id,
+      title: newItem.title,
+      category: newItem.category,
+      image_url: newItem.imageUrl,
+      date: newItem.date,
+    }).catch(() => {});
+
     return newItem;
   }
 
   deleteGalleryItem(id: string): boolean {
     const items = this.getGallery().filter(g => g.id !== id);
     this.saveGallery(items);
+    supabase.delete("gallery", `id=eq.${id}`).catch(() => {});
     return true;
   }
 
@@ -809,6 +1003,22 @@ class DataService {
   saveSchoolInfo(info: SchoolInfo) {
     localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(info));
     this.notify();
+
+    supabase.update("school_info", "id=eq.1", {
+      name: info.name,
+      tagline: info.tagline,
+      established: info.established,
+      affiliation_no: info.affiliationNo,
+      board: info.board,
+      principal: info.principal,
+      principal_message: info.principalMessage,
+      address: info.address,
+      phone: info.phone,
+      email: info.email,
+      website: info.website,
+      about: info.about,
+      socials: info.socials,
+    }).catch(() => {});
   }
 
   // --- DYNAMIC DASHBOARD STATISTICS ---
@@ -833,7 +1043,7 @@ class DataService {
     };
   }
 
-  // --- RESET ALL DATA TO RESTORE CLEAN REALISTIC STATE ---
+  // --- RESET ALL DATA TO RESTORE CLEAN STATE ---
   resetAllData() {
     this.saveAdmissions(INITIAL_ADMISSIONS);
     localStorage.setItem(KEY_SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
@@ -842,6 +1052,7 @@ class DataService {
     this.saveGallery(INITIAL_GALLERY);
     this.saveSchoolInfo(INITIAL_SCHOOL_INFO);
     this.saveForms(INITIAL_FORMS);
+    this.syncFromSupabase();
     this.notify();
   }
 
@@ -898,7 +1109,6 @@ class DataService {
       alert("No form submissions available to export.");
       return;
     }
-    // Collect all field keys
     const allKeys = new Set<string>();
     subs.forEach(s => Object.keys(s.data).forEach(k => allKeys.add(k)));
     const keyArray = Array.from(allKeys);

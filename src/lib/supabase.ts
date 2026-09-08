@@ -1,18 +1,19 @@
 import { getStoredConfig } from "../config/api";
 
-// Lightweight direct REST client for Supabase that works seamlessly without heavy external bundles
+// Lightweight direct REST client for Supabase that works seamlessly across local dev and Vercel
 export class SupabaseClient {
   private getUrl(): string {
     const config = getStoredConfig();
-    return config.supabaseUrl.replace(/\/$/, "");
+    return (config.supabaseUrl || "").replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
   }
 
   private getHeaders(): Record<string, string> {
     const config = getStoredConfig();
+    const key = config.supabaseAnonKey || "";
     return {
       "Content-Type": "application/json",
-      "apikey": config.supabaseAnonKey,
-      "Authorization": `Bearer ${config.supabaseAnonKey}`,
+      "apikey": key,
+      "Authorization": `Bearer ${key}`,
       "Prefer": "return=representation",
     };
   }
@@ -21,10 +22,10 @@ export class SupabaseClient {
     try {
       const url = this.getUrl();
       const config = getStoredConfig();
-      if (!url || !config.supabaseAnonKey || config.supabaseAnonKey.includes("dummy")) {
+      if (!url || !config.supabaseAnonKey || config.supabaseAnonKey.length < 15) {
         return {
           success: false,
-          message: "Please configure a valid Supabase Project URL and Anon Key in Settings.",
+          message: "Please configure a valid Supabase Project URL and Anon Key in .env or Vercel.",
         };
       }
       const response = await fetch(`${url}/rest/v1/`, {
@@ -48,12 +49,13 @@ export class SupabaseClient {
         headers: this.getHeaders(),
       });
       if (!response.ok) {
-        throw new Error(`Error fetching ${table}: ${response.statusText}`);
+        const errText = await response.text();
+        return { data: null, error: `Error ${response.status}: ${errText}` };
       }
       const data = await response.json();
       return { data, error: null };
     } catch (error: any) {
-      return { data: null, error };
+      return { data: null, error: error?.message || "Fetch failed" };
     }
   }
 
@@ -66,12 +68,13 @@ export class SupabaseClient {
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        throw new Error(`Error inserting into ${table}: ${response.statusText}`);
+        const errText = await response.text();
+        return { data: null, error: `Error ${response.status}: ${errText}` };
       }
       const data = await response.json();
       return { data, error: null };
     } catch (error: any) {
-      return { data: null, error };
+      return { data: null, error: error?.message || "Insert failed" };
     }
   }
 
@@ -84,12 +87,13 @@ export class SupabaseClient {
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        throw new Error(`Error updating ${table}: ${response.statusText}`);
+        const errText = await response.text();
+        return { data: null, error: `Error ${response.status}: ${errText}` };
       }
       const data = await response.json();
       return { data, error: null };
     } catch (error: any) {
-      return { data: null, error };
+      return { data: null, error: error?.message || "Update failed" };
     }
   }
 
@@ -101,11 +105,12 @@ export class SupabaseClient {
         headers: this.getHeaders(),
       });
       if (!response.ok) {
-        throw new Error(`Error deleting from ${table}: ${response.statusText}`);
+        const errText = await response.text();
+        return { success: false, error: `Error ${response.status}: ${errText}` };
       }
       return { success: true, error: null };
     } catch (error: any) {
-      return { success: false, error };
+      return { success: false, error: error?.message || "Delete failed" };
     }
   }
 }
