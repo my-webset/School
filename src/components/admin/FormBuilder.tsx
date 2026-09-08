@@ -120,6 +120,30 @@ export default function FormBuilder() {
     }
   };
 
+  const getFormShareUrl = (formId: string) => `${window.location.origin}?formId=${encodeURIComponent(formId)}`;
+
+  const handleCopyFormLink = async (formId: string) => {
+    const shareUrl = getFormShareUrl(formId);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast("Form link copied.");
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = shareUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      showToast("Form link copied.");
+    }
+  };
+
+  const handleShareWhatsApp = (formId: string) => {
+    const form = forms.find(f => f.id === formId);
+    const shareUrl = getFormShareUrl(formId);
+    const message = encodeURIComponent(`Hello, please fill this form: ${form?.name || "Form"}\n${shareUrl}`);
+    window.open(`https://wa.me/?text=${message}`, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="p-6 space-y-5">
@@ -228,6 +252,18 @@ export default function FormBuilder() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleCopyFormLink(f.id)}
+                            className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-1"
+                          >
+                            Copy Link
+                          </button>
+                          <button
+                            onClick={() => handleShareWhatsApp(f.id)}
+                            className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 px-1"
+                          >
+                            WhatsApp
+                          </button>
                           <button
                             onClick={() => handleEditForm(f)}
                             className="text-xs font-semibold text-blue-700 hover:underline px-1"
