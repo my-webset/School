@@ -209,9 +209,9 @@ class DataService {
   getAdmissions(): AdmissionApplication[] {
     try {
       const raw = localStorage.getItem(KEY_ADMISSIONS);
-      if (raw) {
+      if (raw !== null) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
@@ -300,9 +300,9 @@ class DataService {
   getForms(): CustomForm[] {
     try {
       const raw = localStorage.getItem(KEY_FORMS);
-      if (raw) {
+      if (raw !== null) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
@@ -384,9 +384,9 @@ class DataService {
   getSubmissions(formId?: string): FormSubmission[] {
     try {
       const raw = localStorage.getItem(KEY_SUBMISSIONS);
-      if (raw) {
+      if (raw !== null) {
         const parsed: FormSubmission[] = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           if (formId) return parsed.filter(s => s.formId === formId);
           return parsed;
         }
@@ -441,9 +441,9 @@ class DataService {
   getNotices(): NoticeItem[] {
     try {
       const raw = localStorage.getItem(KEY_NOTICES);
-      if (raw) {
+      if (raw !== null) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.error(e);
@@ -489,9 +489,9 @@ class DataService {
   getEvents(): EventItem[] {
     try {
       const raw = localStorage.getItem(KEY_EVENTS);
-      if (raw) {
+      if (raw !== null) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.error(e);
@@ -538,9 +538,9 @@ class DataService {
   getGallery(): GalleryItem[] {
     try {
       const raw = localStorage.getItem(KEY_GALLERY);
-      if (raw) {
+      if (raw !== null) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.error(e);
