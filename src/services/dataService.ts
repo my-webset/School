@@ -74,16 +74,40 @@ class DataService {
 
     keysToClear.forEach((key) => {
       try {
-        localStorage.setItem(key, JSON.stringify([]));
+        const raw = localStorage.getItem(key);
+        if (raw === null) return;
+
+        const parsed = JSON.parse(raw);
+        const looksLikeLegacyDemo = Array.isArray(parsed) && parsed.some(item =>
+          item && typeof item === "object" && (
+            item.id?.toString().startsWith("demo-") ||
+            item.name === "Demo School" ||
+            item.title === "Demo Notice" ||
+            item.studentName === "Sample Student"
+          )
+        );
+
+        if (looksLikeLegacyDemo) {
+          localStorage.setItem(key, JSON.stringify([]));
+        }
       } catch (e) {
-        console.warn("Failed to clear legacy demo data for", key, e);
+        console.warn("Failed to inspect legacy demo data for", key, e);
       }
     });
 
     try {
-      localStorage.setItem("nis_saved_papers_v2", JSON.stringify([]));
+      const rawPapers = localStorage.getItem("nis_saved_papers_v2");
+      if (rawPapers && rawPapers !== "[]") {
+        const parsed = JSON.parse(rawPapers);
+        const looksLikeLegacyDemo = Array.isArray(parsed) && parsed.some((item: any) =>
+          item && typeof item === "object" && (item.id?.toString().startsWith("demo-") || item.title === "Demo Paper")
+        );
+        if (looksLikeLegacyDemo) {
+          localStorage.setItem("nis_saved_papers_v2", JSON.stringify([]));
+        }
+      }
     } catch (e) {
-      console.warn("Failed to clear legacy saved papers data", e);
+      console.warn("Failed to inspect legacy saved papers data", e);
     }
   }
 

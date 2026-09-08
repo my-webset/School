@@ -22,9 +22,9 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
   const [activeCustomFormId, setActiveCustomFormId] = useState<string | null>(null);
 
-  // Check URL parameters for direct Form sharing (QR code / WhatsApp link)
+  // Check URL parameters for direct Form sharing (copied link / WhatsApp link)
   useEffect(() => {
-    const checkFormId = () => {
+    const checkFormId = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         let formId = urlParams.get("formId");
@@ -33,9 +33,21 @@ export default function App() {
           const hashParams = new URLSearchParams(hashQuery);
           formId = hashParams.get("formId");
         }
-        if (formId) {
+
+        if (!formId) return;
+
+        await dataService.syncFromSupabase();
+        const foundForm = dataService.getFormById(formId);
+
+        if (foundForm) {
           setActiveCustomFormId(formId);
           setView("customForm");
+          return;
+        }
+
+        const currentForms = dataService.getForms();
+        if (currentForms.length === 0 && formId) {
+          console.warn("Shared form not found in local storage for formId:", formId);
         }
       } catch (e) {
         console.error(e);
