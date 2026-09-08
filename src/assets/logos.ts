@@ -1,54 +1,86 @@
 // src/assets/logos.ts
-// Direct clean root-relative paths matching Vite public/ directory output
+// Direct ESM image imports bundled directly by Vite for 100% foolproof asset delivery on Vercel & GitHub Pages
 
-const getAssetUrl = (filename: string) => {
-  const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-  return `${base}/logos/${filename}`;
-};
+import schoolLogo from "../../logo/school logo.png";
+import tabFavicon from "../../logo/tab img .png";
+
+import dashboard from "../../logo/dashboard.png";
+import admissions from "../../logo/admisson form lgog.png";
+import formBuilder from "../../logo/Form builer logo.png";
+import aiPaper from "../../logo/ai lgo.png";
+import notices from "../../logo/Notices.png";
+import events from "../../logo/events lofo.png";
+import gallery from "../../logo/gallery logog.png";
+import schoolInfo from "../../logo/information lgoo.png";
+import settings from "../../logo/setting logo.png";
+import logout from "../../logo/logout logog copy.png";
+
+import totalApplicants from "../../logo/total aplllicant logo.png";
+import pendingStatus from "../../logo/pending logog.png";
+import rejectedStatus from "../../logo/rajected logo.png";
+
+import academicExcellence from "../../logo/academaic exccelelnce logo.png";
+import holisticEnvironment from "../../logo/Holistic enviornmetn logo.png";
+import experiencedFaculty from "../../logo/expreicnnnde faculty lgoo.png";
+import modernInfrastructure from "../../logo/modern infrastruer logo.png";
+import safeEnvironment from "../../logo/safe enviornment logo.png";
+import techEnabledLearning from "../../logo/tech enabled learnign.png";
+
+import scienceLab from "../../logo/sceintce lab log.png";
+import library from "../../logo/library lgog.png";
+import auditorium from "../../logo/auditoriam logo.png";
+import sportsComplex from "../../logo/sports n comple loof.png";
+import artAndMusic from "../../logo/art and msuc logo.png";
+
+import contacts from "../../logo/contacts.png";
+import location from "../../logo/location.png";
+import facebook from "../../logo/facebook logog.png";
+import instagram from "../../logo/insta lgog.png";
+import youtube from "../../logo/yt logo.png";
 
 export const LOGOS = {
   // Brand & School Logos
-  schoolLogo: getAssetUrl("school logo.png"),
-  tabFavicon: getAssetUrl("tab img .png"),
+  schoolLogo,
+  tabFavicon,
 
   // Admin Navigation & Action Logos
-  dashboard: getAssetUrl("dashboard.png"),
-  admissions: getAssetUrl("admisson form lgog.png"),
-  formBuilder: getAssetUrl("Form builer logo.png"),
-  aiPaper: getAssetUrl("ai lgo.png"),
-  notices: getAssetUrl("Notices.png"),
-  events: getAssetUrl("events lofo.png"),
-  gallery: getAssetUrl("gallery logog.png"),
-  schoolInfo: getAssetUrl("information lgoo.png"),
-  settings: getAssetUrl("setting logo.png"),
-  logout: getAssetUrl("logout logog copy.png"),
+  dashboard,
+  admissions,
+  formBuilder,
+  aiPaper,
+  notices,
+  events,
+  gallery,
+  schoolInfo,
+  settings,
+  logout,
 
   // Dashboard & Status Stat Logos
-  totalApplicants: getAssetUrl("total aplllicant logo.png"),
-  pendingStatus: getAssetUrl("pending logog.png"),
-  rejectedStatus: getAssetUrl("rajected logo.png"),
+  totalApplicants,
+  pendingStatus,
+  rejectedStatus,
 
   // Features ("Why Choose Us") Logos
-  academicExcellence: getAssetUrl("academaic exccelelnce logo.png"),
-  holisticEnvironment: getAssetUrl("Holistic enviornmetn logo.png"),
-  experiencedFaculty: getAssetUrl("expreicnnnde faculty lgoo.png"),
-  modernInfrastructure: getAssetUrl("modern infrastruer logo.png"),
-  safeEnvironment: getAssetUrl("safe enviornment logo.png"),
-  techEnabledLearning: getAssetUrl("tech enabled learnign.png"),
+  academicExcellence,
+  holisticEnvironment,
+  experiencedFaculty,
+  modernInfrastructure,
+  safeEnvironment,
+  techEnabledLearning,
 
   // Facilities Logos
-  scienceLab: getAssetUrl("sceintce lab log.png"),
-  library: getAssetUrl("library lgog.png"),
-  auditorium: getAssetUrl("auditoriam logo.png"),
-  sportsComplex: getAssetUrl("sports n comple loof.png"),
-  artAndMusic: getAssetUrl("art and msuc logo.png"),
+  scienceLab,
+  library,
+  auditorium,
+  sportsComplex,
+  artAndMusic,
 
   // Contact & Social Logos
-  contacts: getAssetUrl("contacts.png"),
-  location: getAssetUrl("location.png"),
-  facebook: getAssetUrl("facebook logog.png"),
-  instagram: getAssetUrl("insta lgog.png"),
-  youtube: getAssetUrl("yt logo.png"),
+  contacts,
+  location,
+  facebook,
+  instagram,
+  youtube,
 };
 
 export default LOGOS;
