@@ -22,42 +22,55 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
   const [activeCustomFormId, setActiveCustomFormId] = useState<string | null>(null);
 
+  const getFormIdFromUrl = () => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      let formId = urlParams.get("formId");
+
+      if (!formId && window.location.hash.includes("formId=")) {
+        const hashQuery = window.location.hash.replace(/^#\/?\??/, "");
+        const hashParams = new URLSearchParams(hashQuery);
+        formId = hashParams.get("formId");
+      }
+
+      return formId;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
   // Check URL parameters for direct Form sharing (copied link / WhatsApp link)
   useEffect(() => {
-    const checkFormId = async () => {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        let formId = urlParams.get("formId");
-        if (!formId && window.location.hash.includes("formId=")) {
-          const hashQuery = window.location.hash.replace(/^#\/?\??/, "");
-          const hashParams = new URLSearchParams(hashQuery);
-          formId = hashParams.get("formId");
-        }
+    const formId = getFormIdFromUrl();
 
-        if (!formId) return;
+    if (formId) {
+      setActiveCustomFormId(formId);
+      setView("customForm");
+      return;
+    }
 
-        await dataService.syncFromSupabase();
-        const foundForm = dataService.getFormById(formId);
+    if (view === "customForm") {
+      setActiveCustomFormId(null);
+      setView("public");
+    }
+  }, [view]);
 
-        if (foundForm) {
-          setActiveCustomFormId(formId);
-          setView("customForm");
-          return;
-        }
-
-        const currentForms = dataService.getForms();
-        if (currentForms.length === 0 && formId) {
-          console.warn("Shared form not found in local storage for formId:", formId);
-        }
-      } catch (e) {
-        console.error(e);
+  useEffect(() => {
+    const handlePopState = () => {
+      const formId = getFormIdFromUrl();
+      if (formId) {
+        setActiveCustomFormId(formId);
+        setView("customForm");
+      } else if (view === "customForm") {
+        setActiveCustomFormId(null);
+        setView("public");
       }
     };
 
-    checkFormId();
-    window.addEventListener("popstate", checkFormId);
-    return () => window.removeEventListener("popstate", checkFormId);
-  }, []);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [view]);
 
 
   // Check existing session
@@ -97,7 +110,9 @@ export default function App() {
       <PublicFormView
         formId={activeCustomFormId}
         onBack={() => {
-          window.history.pushState({}, "", window.location.pathname);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("formId");
+          window.history.replaceState({}, "", url.toString());
           setActiveCustomFormId(null);
           setView("public");
           setCurrentPage("home");
