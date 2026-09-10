@@ -37,6 +37,9 @@ export interface AIPaperResult {
 }
 
 export function buildSystemPrompt(schoolInfo: any, blueprint: any): string {
+  const targetPages = Number(blueprint.targetPages) || 2;
+  const targetQCount = targetPages === 1 ? "6 to 8 questions total" : targetPages === 2 ? "12 to 16 questions total" : targetPages === 3 ? "20 to 26 questions total" : "30 to 36 questions total";
+
   return `You are an exam question-paper generation engine used inside a school's admin portal.
 
 HARD RULES (never break these):
@@ -47,25 +50,25 @@ HARD RULES (never break these):
 2. Never invent facts about the school (name/address/affiliation) — you are only responsible for
    the exam content itself (instructions text, sections, questions, marks, options, answer key).
    The school header is rendered separately by the app.
-3. Always respect the Exam Blueprint exactly: Subject, Class/Grade, Exam Type, Total Marks,
+3. Target Paper Length: The user requested a ${targetPages}-PAGE exam paper. You MUST generate exactly ${targetQCount} proportioned evenly across the chosen sections to properly fill ${targetPages} printed pages.
+4. Always respect the Exam Blueprint exactly: Subject, Class/Grade, Exam Type, Total Marks,
    Time Duration, Difficulty, Chapters & Topics, and the selected Question Formats.
-4. The sum of marks across all questions in all sections MUST equal the Total Marks given.
-5. Distribute questions across sections in this fixed convention unless the user explicitly asks
+5. The sum of marks across all questions in all sections MUST equal the Total Marks (${blueprint.totalMarks || 80}).
+6. Distribute questions across sections in this fixed convention unless the user explicitly asks
    to change it in the chat:
    - SECTION A — Objective & Conceptual: MCQ / True-False / Fill in the Blanks, 1 mark each.
    - SECTION B — Short Answer: 2-mark and 3-mark questions.
    - SECTION C — Long Answer / Analytical: 5-mark questions.
+   - SECTION D (for 3+ page papers) — Case-Based / Source-Based Applied Problems: 4 to 5 marks each.
    Only include sections whose question formats were selected in the blueprint.
-6. Every question must be genuinely answerable from the given Subject/Class/Chapters — do not
+7. Every question must be genuinely answerable from the given Subject/Class/Chapters — do not
    generate vague or filler questions. MCQs must have exactly 4 options (A–D) and exactly one
    correct answer.
-7. If the user's chat instruction only asks for a small change (e.g. "make section C harder",
-   "add 2 more MCQs", "remove trigonometry"), apply ONLY that change and keep the rest of the
-   previously generated paper intact — return the full, updated paper JSON again in full.
-8. If reference images were attached, treat them as source material (textbook pages, sample
+8. If the user's chat instruction asks to change page count (e.g. "make it 3 pages", "make 1 page unit test"), adjust the question density and section depth to fit that page length.
+9. If reference images were attached, treat them as source material (textbook pages, sample
    papers, diagrams, syllabus scans) to ground the questions — do not describe the images back
    to the user, just use them silently as context.
-9. Only produce an "answerKey" array when the user has asked to include/show the answer key.
+10. Only produce an "answerKey" array when the user has asked to include/show the answer key.
 
 Return JSON in EXACTLY this shape:
 {
@@ -219,112 +222,166 @@ function parseModelJson(raw: string, blueprint: any): AIPaperResult {
 
 function generateSmartFallback(blueprint: any): AIPaperResult {
   const topics = blueprint.chapters || blueprint.subject || "Mathematics";
-  const mainTopic = topics.split(/[,;\n]/)[0]?.trim() || "Foundational Concepts";
-  const subTopic = topics.split(/[,;\n]/)[1]?.trim() || "Core Applications";
+  const topicList = topics.split(/[,;\n]/).map((t: string) => t.trim()).filter(Boolean);
+  const mainTopic = topicList[0] || "Core Theory & Fundamentals";
+  const subTopic = topicList[1] || topicList[0] || "Practical Applications";
+  const thirdTopic = topicList[2] || topicList[0] || "Advanced Problem Solving";
+  const fourthTopic = topicList[3] || topicList[1] || "Analytical Modeling";
+
+  const targetPages = Math.min(Math.max(Number(blueprint.targetPages) || 2, 1), 4);
+  const totalMarks = Number(blueprint.totalMarks) || (targetPages === 1 ? 25 : targetPages === 2 ? 50 : targetPages === 3 ? 80 : 100);
+
+  let qNum = 1;
+  const sections: PaperSection[] = [];
+  const answerKey: { number: number; answer: string }[] = [];
+
+  // SECTION A: OBJECTIVE & CONCEPTUAL (MCQ / True-False / Fill in Blanks)
+  const secAQCount = targetPages === 1 ? 4 : targetPages === 2 ? 6 : targetPages === 3 ? 10 : 14;
+  const secAQuestions: PaperQuestion[] = [];
+
+  for (let i = 0; i < secAQCount; i++) {
+    const currentTopic = topicList[i % topicList.length] || mainTopic;
+    if (i % 3 === 0) {
+      secAQuestions.push({
+        number: qNum,
+        type: "mcq",
+        text: `Which of the following fundamental principles is central to ${currentTopic}?\n(A) Conservation and Equilibrium\n(B) Monotonic Discontinuity\n(C) Arbitrary Variance\n(D) Singular Approximation`,
+        marks: 1,
+        options: ["(A) Conservation and Equilibrium", "(B) Monotonic Discontinuity", "(C) Arbitrary Variance", "(D) Singular Approximation"],
+      });
+      answerKey.push({ number: qNum, answer: "(A) Conservation and Equilibrium - Standard curriculum definition." });
+    } else if (i % 3 === 1) {
+      secAQuestions.push({
+        number: qNum,
+        type: "mcq",
+        text: `When evaluating system stability in ${currentTopic}, the baseline parameter must satisfy:\n(A) Non-negative boundary condition\n(B) Divergent state\n(C) Zero critical mass\n(D) Infinity`,
+        marks: 1,
+        options: ["(A) Non-negative boundary condition", "(B) Divergent state", "(C) Zero critical mass", "(D) Infinity"],
+      });
+      answerKey.push({ number: qNum, answer: "(A) Non-negative boundary condition - In accordance with standard theorems." });
+    } else {
+      secAQuestions.push({
+        number: qNum,
+        type: "fill_blank",
+        text: `The rate of variation in ${currentTopic} is directly proportional to ________.`,
+        marks: 1,
+        options: null,
+      });
+      answerKey.push({ number: qNum, answer: "Applied Gradient / Direct Flux Rate." });
+    }
+    qNum++;
+  }
+
+  sections.push({
+    sectionLabel: "SECTION A",
+    sectionTitle: "(OBJECTIVE & CONCEPTUAL)",
+    sectionNote: `Questions 1 to ${secAQuestions.length} carry 1 mark each.`,
+    questions: secAQuestions,
+  });
+
+  // SECTION B: SHORT ANSWER QUESTIONS (2 & 3 MARKS)
+  const secBQCount = targetPages === 1 ? 2 : targetPages === 2 ? 4 : targetPages === 3 ? 6 : 8;
+  const secBQuestions: PaperQuestion[] = [];
+
+  for (let i = 0; i < secBQCount; i++) {
+    const isThreeMark = i % 2 === 1;
+    const currentTopic = topicList[(i + 1) % topicList.length] || subTopic;
+    if (!isThreeMark) {
+      secBQuestions.push({
+        number: qNum,
+        type: "very_short",
+        text: `Define the primary governing theorem of ${currentTopic} and state its standard mathematical formulation or SI unit.`,
+        marks: 2,
+        options: null,
+      });
+      answerKey.push({ number: qNum, answer: "Definition statement: 1 Mark; Correct formulation/unit: 1 Mark." });
+    } else {
+      secBQuestions.push({
+        number: qNum,
+        type: "short",
+        text: `Differentiate between static and dynamic conditions in ${currentTopic}. Provide a brief tabular comparison with at least 3 distinct points.`,
+        marks: 3,
+        options: null,
+      });
+      answerKey.push({ number: qNum, answer: "1 Mark per distinct, accurate distinguishing criterion with examples." });
+    }
+    qNum++;
+  }
+
+  sections.push({
+    sectionLabel: "SECTION B",
+    sectionTitle: "(SHORT ANSWER & REASONING)",
+    sectionNote: `Questions carry 2 and 3 marks as indicated.`,
+    questions: secBQuestions,
+  });
+
+  // SECTION C: LONG ANSWER & ANALYTICAL (5 MARKS)
+  const secCQCount = targetPages === 1 ? 1 : targetPages === 2 ? 2 : targetPages === 3 ? 3 : 5;
+  const secCQuestions: PaperQuestion[] = [];
+
+  for (let i = 0; i < secCQCount; i++) {
+    const currentTopic = topicList[(i + 2) % topicList.length] || thirdTopic;
+    secCQuestions.push({
+      number: qNum,
+      type: "long",
+      text: `State and prove the foundational theorem in ${currentTopic}.\n(a) State the underlying hypotheses and boundary conditions.\n(b) Provide the complete analytical derivation step-by-step.\n(c) Illustrate the principle with a neat, labelled schematic diagram.`,
+      marks: 5,
+      options: null,
+    });
+    answerKey.push({ number: qNum, answer: "(a) Statement & conditions: 1.5M; (b) Step-by-step derivation: 2.5M; (c) Neat diagram: 1M." });
+    qNum++;
+  }
+
+  sections.push({
+    sectionLabel: "SECTION C",
+    sectionTitle: "(LONG ANSWER & DERIVATIONS)",
+    sectionNote: `Questions carry 5 marks each. Internal choice is provided where applicable.`,
+    questions: secCQuestions,
+  });
+
+  // SECTION D: CASE-STUDY & APPLIED COMPETENCY (For 3 or 4 pages)
+  if (targetPages >= 3) {
+    const secDQCount = targetPages === 3 ? 2 : 3;
+    const secDQuestions: PaperQuestion[] = [];
+
+    for (let i = 0; i < secDQCount; i++) {
+      const currentTopic = topicList[(i + 3) % topicList.length] || fourthTopic;
+      secDQuestions.push({
+        number: qNum,
+        type: "long",
+        text: `Case Study / Practical Investigation in ${currentTopic}:\nAn experimental setup was recorded to analyze the reaction kinetics under varying thermal ambient conditions. A 12% linear shift was observed for every 5 units of parameter elevation.\n(i) Formulate the mathematical model representing the relationship. [2 Marks]\n(ii) Determine the resultant output at standard test temperature. [2 Marks]\n(iii) Suggest two preventive controls to minimize calibration drift. [1 Mark]`,
+        marks: 5,
+        options: null,
+      });
+      answerKey.push({ number: qNum, answer: "(i) Model formulation: 2M; (ii) Step-by-step calculation: 2M; (iii) Two valid controls: 1M." });
+      qNum++;
+    }
+
+    sections.push({
+      sectionLabel: "SECTION D",
+      sectionTitle: "(CASE-BASED & COMPETENCY PROBLEMS)",
+      sectionNote: `Read the case text carefully and answer the sub-questions carrying 5 marks total.`,
+      questions: secDQuestions,
+    });
+  }
 
   return {
     examTitle: (blueprint.examType || "Half-Yearly Examination").toUpperCase(),
     session: "SESSION 2026-27",
     subject: blueprint.subject || "Mathematics",
     className: blueprint.className || "Class X",
-    timeAllowed: blueprint.duration || "3 Hours",
-    maximumMarks: Number(blueprint.totalMarks) || 80,
+    timeAllowed: blueprint.duration || (targetPages === 1 ? "1.5 Hours" : targetPages === 2 ? "2.5 Hours" : "3 Hours"),
+    maximumMarks: totalMarks,
     generalInstructions: [
-      "All questions are compulsory. Internal choice is given in Section C.",
+      "All questions are compulsory. Internal choice is given in Section C and Section D.",
       "Section A comprises objective type questions (1 mark each).",
       "Section B comprises short-answer questions (2 and 3 marks each).",
       "Section C comprises long-answer questions (5 marks each).",
+      ...(targetPages >= 3 ? ["Section D comprises case-based competency questions (5 marks each)."] : []),
       "Use of calculators or electronic devices is strictly prohibited.",
       "Draw neat, labelled diagrams wherever necessary.",
     ],
-    sections: [
-      {
-        sectionLabel: "SECTION A",
-        sectionTitle: "(OBJECTIVE & CONCEPTUAL)",
-        sectionNote: "Questions 1 to 6 carry 1 mark each.",
-        questions: [
-          {
-            number: 1,
-            type: "mcq",
-            text: `Which of the following is the fundamental governing property in ${mainTopic}?\n(A) Invariant Conservation\n(B) Monotonic Divergence\n(C) Arbitrary Boundary\n(D) Singular Discontinuity`,
-            marks: 1,
-            options: ["(A) Invariant Conservation", "(B) Monotonic Divergence", "(C) Arbitrary Boundary", "(D) Singular Discontinuity"],
-          },
-          {
-            number: 2,
-            type: "mcq",
-            text: `In evaluating ${subTopic}, the standard reference value is:\n(A) Zero\n(B) Unity (1.0)\n(C) Infinity\n(D) Undefined`,
-            marks: 1,
-            options: ["(A) Zero", "(B) Unity (1.0)", "(C) Infinity", "(D) Undefined"],
-          },
-          {
-            number: 3,
-            type: "fill_blank",
-            text: `The rate of variation in ${mainTopic} is directly proportional to ________.`,
-            marks: 1,
-            options: null,
-          },
-          {
-            number: 4,
-            type: "true_false",
-            text: `Every continuous state in ${subTopic} satisfies the conservation equilibrium. (True / False)`,
-            marks: 1,
-            options: null,
-          },
-        ],
-      },
-      {
-        sectionLabel: "SECTION B",
-        sectionTitle: "(SHORT ANSWER & REASONING)",
-        sectionNote: "Questions carry 2 and 3 marks each.",
-        questions: [
-          {
-            number: 5,
-            type: "short",
-            text: `Define the primary governing theorem of ${mainTopic} and state its SI unit or analytical representation.`,
-            marks: 2,
-            options: null,
-          },
-          {
-            number: 6,
-            type: "short",
-            text: `Differentiate between static and dynamic conditions in ${subTopic}. Give two points of difference.`,
-            marks: 3,
-            options: null,
-          },
-        ],
-      },
-      {
-        sectionLabel: "SECTION C",
-        sectionTitle: "(LONG ANSWER & APPLICATION PROBLEMS)",
-        sectionNote: "Questions carry 5 marks each.",
-        questions: [
-          {
-            number: 7,
-            type: "long",
-            text: `State and prove the foundational theorem in ${mainTopic}. Derive the final expression step-by-step and illustrate with a neat schematic diagram.`,
-            marks: 5,
-            options: null,
-          },
-          {
-            number: 8,
-            type: "long",
-            text: `Case Study Problem: An experimental sample in ${subTopic} undergoes a 15% rate transformation under standard laboratory conditions. Formulate the mathematical model and calculate the resulting equilibrium.`,
-            marks: 5,
-            options: null,
-          },
-        ],
-      },
-    ],
-    answerKey: [
-      { number: 1, answer: "(A) Invariant Conservation - Consistent with core syllabus guidelines." },
-      { number: 2, answer: "(B) Unity (1.0) - Standard reference baseline." },
-      { number: 3, answer: "Applied Gradient / Driving Parameter." },
-      { number: 4, answer: "True - Validated by the equilibrium theorem." },
-      { number: 5, answer: "Definition: 1 Mark; Correct representation/unit: 1 Mark." },
-      { number: 6, answer: "1.5 Marks for each distinct, valid comparison criterion." },
-      { number: 7, answer: "Statement & assumptions: 1.5M; Step-by-step derivation: 2.5M; Diagram: 1M." },
-      { number: 8, answer: "Model formulation: 2M; Calculation & final answer: 3M." },
-    ],
+    sections,
+    answerKey,
   };
 }

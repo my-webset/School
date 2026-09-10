@@ -12,6 +12,7 @@ interface Props {
 const MENU_ITEMS = [
   { id: "dashboard", label: "Dashboard", iconUrl: LOGOS.dashboard },
   { id: "admissions", label: "Admission Forms", iconUrl: LOGOS.admissions },
+  { id: "inquiries", label: "Online Inquiries", iconUrl: LOGOS.contacts },
   { id: "formBuilder", label: "Form Builder", iconUrl: LOGOS.formBuilder },
   { id: "aiPaper", label: "AI Paper Generator", iconUrl: LOGOS.aiPaper },
   { id: "notices", label: "Notices", iconUrl: LOGOS.notices },
@@ -29,6 +30,7 @@ export default function AdminSidebar({
   onLogout,
 }: Props) {
   const school = dataService.getSchoolInfo();
+  const stats = dataService.getStats();
 
   return (
     <aside
@@ -81,28 +83,46 @@ export default function AdminSidebar({
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
         {MENU_ITEMS.map((item) => {
-          const isActive = activeSection === item.id;
+          const isActive =
+            activeSection === item.id ||
+            (item.id === "formBuilder" && (activeSection === "formSubmissions" || activeSection === "form_submissions"));
+          const isPendingAdmissions = item.id === "admissions" && stats.pendingApplications > 0;
+          const isNewInquiries = item.id === "inquiries" && stats.newInquiries > 0;
+
           return (
             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
               title={collapsed ? item.label : undefined}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all text-left ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all text-left relative ${
                 isActive
                   ? "text-white font-semibold shadow-inner"
                   : "text-blue-200/80 hover:text-white hover:bg-white/10"
               }`}
               style={isActive ? { background: "rgba(255,255,255,0.14)" } : {}}
             >
-              <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+              <div className="w-6 h-6 flex items-center justify-center flex-shrink-0 relative">
                 <img
                   src={item.iconUrl}
                   alt={item.label}
                   className={`w-5 h-5 object-contain transition-transform ${isActive ? "scale-110" : "opacity-90"}`}
                 />
+                {collapsed && (isPendingAdmissions || isNewInquiries) && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                )}
               </div>
               {!collapsed && <span className="truncate text-xs">{item.label}</span>}
-              {!collapsed && isActive && (
+              {!collapsed && isNewInquiries && (
+                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {stats.newInquiries}
+                </span>
+              )}
+              {!collapsed && isPendingAdmissions && !isNewInquiries && (
+                <span className="ml-auto bg-amber-500/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {stats.pendingApplications}
+                </span>
+              )}
+              {!collapsed && isActive && !isNewInquiries && !isPendingAdmissions && (
                 <span
                   className="ml-auto w-2 h-2 rounded-full flex-shrink-0"
                   style={{ background: "var(--accent)" }}

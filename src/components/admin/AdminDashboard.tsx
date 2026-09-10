@@ -2,6 +2,7 @@ import { useState } from "react";
 import AdminSidebar from "./AdminSidebar";
 import DashboardHome from "./DashboardHome";
 import AdmissionsManager from "./AdmissionsManager";
+import InquiriesManager from "./InquiriesManager";
 import FormBuilder from "./FormBuilder";
 import AIPaperGenerator from "./AIPaperGenerator";
 import NoticesManager from "./NoticesManager";
@@ -28,8 +29,14 @@ export default function AdminDashboard({ onLogout }: Props) {
         return <DashboardHome setActiveSection={setSection} />;
       case "admissions":
         return <AdmissionsManager />;
+      case "inquiries":
+        return <InquiriesManager />;
       case "formBuilder":
-        return <FormBuilder />;
+      case "forms":
+        return <FormBuilder initialTab="builder" />;
+      case "formSubmissions":
+      case "form_submissions":
+        return <FormBuilder initialTab="submissions" />;
       case "aiPaper":
         return <AIPaperGenerator />;
       case "notices":

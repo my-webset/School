@@ -65,11 +65,14 @@ export default function DashboardHome({ setActiveSection }: Props) {
       </div>
 
       {/* Dynamic Metric Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Total Applicants</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 p-1.5 flex items-center justify-center">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+        <div 
+          onClick={() => setActiveSection?.("admissions")}
+          className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 group-hover:text-blue-600 transition-colors">Applicants</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 p-1 flex items-center justify-center">
               <img src={LOGOS.totalApplicants} alt="Total" className="w-full h-full object-contain" />
             </div>
           </div>
@@ -78,15 +81,18 @@ export default function DashboardHome({ setActiveSection }: Props) {
               {stats.totalApplications}
             </div>
             <div className="text-[11px] text-blue-600 font-medium mt-0.5">
-              +{stats.todaySubmissions} received today
+              +{stats.todaySubmissions} today
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Pending Review</span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 p-1.5 flex items-center justify-center">
+        <div 
+          onClick={() => setActiveSection?.("admissions")}
+          className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-amber-200 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 group-hover:text-amber-600 transition-colors">Pending</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 p-1 flex items-center justify-center">
               <img src={LOGOS.pendingStatus} alt="Pending" className="w-full h-full object-contain" />
             </div>
           </div>
@@ -95,15 +101,18 @@ export default function DashboardHome({ setActiveSection }: Props) {
               {stats.pendingApplications}
             </div>
             <div className="text-[11px] text-amber-700/80 font-medium mt-0.5">
-              Awaiting decision
+              Needs review
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Approved</span>
-            <div className="w-9 h-9 rounded-xl bg-green-50 p-1.5 flex items-center justify-center">
+        <div 
+          onClick={() => setActiveSection?.("admissions")}
+          className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-green-200 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 group-hover:text-green-600 transition-colors">Approved</span>
+            <div className="w-8 h-8 rounded-xl bg-green-50 p-1 flex items-center justify-center">
               <img src={LOGOS.schoolLogo} alt="Approved" className="w-full h-full object-contain" />
             </div>
           </div>
@@ -112,32 +121,38 @@ export default function DashboardHome({ setActiveSection }: Props) {
               {stats.approvedApplications}
             </div>
             <div className="text-[11px] text-green-700/80 font-medium mt-0.5">
-              Confirmed admissions
+              Admitted
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Rejected</span>
-            <div className="w-9 h-9 rounded-xl bg-red-50 p-1.5 flex items-center justify-center">
-              <img src={LOGOS.rejectedStatus} alt="Rejected" className="w-full h-full object-contain" />
+        <div 
+          onClick={() => setActiveSection?.("inquiries")}
+          className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-rose-200 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 group-hover:text-rose-600 transition-colors">Inquiries</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-50 p-1 flex items-center justify-center text-sm font-bold text-rose-600">
+              💬
             </div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-red-600 font-mono">
-              {stats.rejectedApplications}
+            <div className="text-2xl font-bold text-rose-600 font-mono">
+              {stats.totalInquiries}
             </div>
-            <div className="text-[11px] text-red-700/80 font-medium mt-0.5">
-              Declined submissions
+            <div className="text-[11px] text-rose-700/80 font-medium mt-0.5">
+              {stats.newInquiries} unread leads
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Form Responses</span>
-            <div className="w-9 h-9 rounded-xl bg-purple-50 p-1.5 flex items-center justify-center">
+        <div 
+          onClick={() => setActiveSection?.("formSubmissions")}
+          className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-purple-200 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 group-hover:text-purple-600 transition-colors">Form Leads</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 p-1 flex items-center justify-center">
               <img src={LOGOS.formBuilder} alt="Forms" className="w-full h-full object-contain" />
             </div>
           </div>
@@ -146,15 +161,18 @@ export default function DashboardHome({ setActiveSection }: Props) {
               {stats.totalCustomFormSubmissions}
             </div>
             <div className="text-[11px] text-purple-700/80 font-medium mt-0.5">
-              Custom form leads
+              Custom submissions
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Active Notices</span>
-            <div className="w-9 h-9 rounded-xl bg-cyan-50 p-1.5 flex items-center justify-center">
+        <div 
+          onClick={() => setActiveSection?.("notices")}
+          className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-cyan-200 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 group-hover:text-cyan-600 transition-colors">Notices</span>
+            <div className="w-8 h-8 rounded-xl bg-cyan-50 p-1 flex items-center justify-center">
               <img src={LOGOS.notices} alt="Notices" className="w-full h-full object-contain" />
             </div>
           </div>
@@ -163,7 +181,27 @@ export default function DashboardHome({ setActiveSection }: Props) {
               {stats.totalNotices}
             </div>
             <div className="text-[11px] text-cyan-700/80 font-medium mt-0.5">
-              Live on website
+              Live on site
+            </div>
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setActiveSection?.("gallery")}
+          className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 group-hover:text-indigo-600 transition-colors">Gallery</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 p-1 flex items-center justify-center">
+              <img src={LOGOS.gallery} alt="Gallery" className="w-full h-full object-contain" />
+            </div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-indigo-700 font-mono">
+              {stats.totalGallery}
+            </div>
+            <div className="text-[11px] text-indigo-700/80 font-medium mt-0.5">
+              Published photos
             </div>
           </div>
         </div>

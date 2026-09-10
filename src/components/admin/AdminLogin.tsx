@@ -15,20 +15,28 @@ export default function AdminLogin({ onLogin, setView }: Props) {
   const [error, setError] = useState("");
   const school = dataService.getSchoolInfo();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    setTimeout(() => {
-      const res = AuthService.login(password);
+    try {
+      const res = await AuthService.loginAsync(password);
       if (res.success) {
         onLogin();
       } else {
         setError(res.message || "Invalid admin password. Default is admin123");
         setLoading(false);
       }
-    }, 400);
+    } catch (err) {
+      const fallbackRes = AuthService.login(password);
+      if (fallbackRes.success) {
+        onLogin();
+      } else {
+        setError("Invalid admin password. Please try again.");
+        setLoading(false);
+      }
+    }
   };
 
   return (

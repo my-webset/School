@@ -1,45 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { AuthService } from "../../services/authService";
 import { dataService } from "../../services/dataService";
-import { AICREDITS_CONFIG } from "../../services/aiClient";
 
 export default function SettingsManager() {
   const [currentPass, setCurrentPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
   const [toast, setToast] = useState("");
-  const [usageCount, setUsageCount] = useState(0);
-  const maxQuota = 500;
-
-  const loadUsage = () => {
-    try {
-      const raw = localStorage.getItem("nis_school_settings_v1");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setUsageCount(parsed.aiUsageCount || 0);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    loadUsage();
-  }, []);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>(new Date().toLocaleTimeString());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
   };
 
-  // 1. Password Change
-  const handleChangePassword = (e: React.FormEvent) => {
+  // 1. Password Change (Cross-device database sync)
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPass !== confirmPass) {
       alert("New password and confirm password do not match.");
       return;
     }
-    const res = AuthService.changePassword(currentPass, newPass);
+    const res = await AuthService.changePassword(currentPass, newPass);
     if (res.success) {
       showToast(res.message);
       setCurrentPass("");
@@ -50,49 +35,57 @@ export default function SettingsManager() {
     }
   };
 
-  // 2. Reset AI Usage Counter
-  const handleResetAICounter = () => {
-    try {
-      const raw = localStorage.getItem("nis_school_settings_v1");
-      const parsed = raw ? JSON.parse(raw) : {};
-      localStorage.setItem("nis_school_settings_v1", JSON.stringify({ ...parsed, aiUsageCount: 0 }));
-      setUsageCount(0);
-      showToast("AI credit usage tracker reset to 0.");
-    } catch (e) {
-      console.error(e);
+  // 2. Force Cloud Database Sync
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    const res = await dataService.syncFromSupabase();
+    setIsSyncing(false);
+    setLastSyncTime(new Date().toLocaleTimeString());
+    if (res.success) {
+      showToast("Cloud Database synchronized successfully!");
+    } else {
+      alert(`Sync issue: ${res.message || "Please check your network and Supabase connection."}`);
     }
   };
 
-  // 3. Reset All Data
-  const handleResetData = () => {
-    if (window.confirm("Are you sure you want to reset all admissions and submission data to clean defaults?")) {
-      dataService.resetAllData();
+  // 3. Download Full JSON Backup
+  const handleDownloadBackup = () => {
+    dataService.exportFullBackupJSON();
+    showToast("Full backup file downloaded!");
+  };
+
+  // 4. Restore from JSON Backup
+  const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+
+      if (window.confirm("Restore entire school database from this backup? This will update cloud database records.")) {
+        setIsRestoring(true);
+        const res = await dataService.restoreFromBackupJSON(content);
+        setIsRestoring(false);
+        if (res.success) {
+          showToast(res.message);
+        } else {
+          alert(res.message);
+        }
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // 5. Reset All Data to Clean Defaults
+  const handleResetData = async () => {
+    if (window.confirm("Are you sure you want to reset all site data to clean defaults?")) {
+      await dataService.resetAllData();
       showToast("Data reset completed successfully!");
     }
   };
-
-  // 4. Download Full JSON Backup
-  const handleDownloadBackup = () => {
-    const backup = {
-      schoolInfo: dataService.getSchoolInfo(),
-      admissions: dataService.getAdmissions(),
-      notices: dataService.getNotices(),
-      events: dataService.getEvents(),
-      gallery: dataService.getGallery(),
-      forms: dataService.getForms(),
-      submissions: dataService.getSubmissions(),
-      exportedAt: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Nalanda_Full_Backup_${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const usagePercent = Math.min(100, Math.round((usageCount / maxQuota) * 100));
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
@@ -109,7 +102,7 @@ export default function SettingsManager() {
           Website & System Settings
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Manage administrator security password, monitor AI generation quota, and perform system data backups.
+          Manage master admin authorization, synchronize cloud database across devices, and manage full system data backups.
         </p>
       </div>
 
@@ -120,9 +113,9 @@ export default function SettingsManager() {
             🔐
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-800">Admin Security Password</h2>
+            <h2 className="text-sm font-bold text-slate-800">Master Admin Security Password</h2>
             <p className="text-[11px] text-slate-500">
-              Update the master security password required to unlock this admin dashboard.
+              Update password across all devices (laptop, mobile, tablet) synchronized directly in Supabase.
             </p>
           </div>
         </div>
@@ -170,102 +163,131 @@ export default function SettingsManager() {
             className="px-5 py-2.5 rounded-xl font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
             style={{ background: "var(--primary)" }}
           >
-            Update Admin Password
+            Update Admin Password (All Devices)
           </button>
         </form>
       </div>
 
-      {/* 2. AI Credit Usage & Quota Dashboard */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-5">
+      {/* 2. Cloud Database Sync & Health */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-lg">
-              🤖
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-lg">
+              ☁️
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-800">AI Credit Usage & Quota</h2>
-              <p className="text-[11px] text-slate-500">Live credit consumption tracker for AI Question Paper synthesis.</p>
+              <h2 className="text-sm font-bold text-slate-800">Cloud Database Synchronization</h2>
+              <p className="text-[11px] text-slate-500">
+                Direct real-time 2-way sync with Supabase for admissions, notices, events, gallery, forms & inquiries.
+              </p>
             </div>
           </div>
           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            AI Service Connected
+            Live Cloud Sync Active
           </span>
         </div>
 
-        {/* AI Stats Cards */}
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-100">
-            <div className="text-[11px] font-semibold text-purple-700">Total Papers Synthesized</div>
-            <div className="text-2xl font-bold text-purple-900 font-mono mt-1">{usageCount}</div>
-            <div className="text-[10px] text-purple-600 mt-0.5">Exam blueprints generated</div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
+          <div>
+            <div className="font-semibold text-slate-800">Automatic Sync Interval: Every 12 seconds</div>
+            <div className="text-slate-500 text-[11px] mt-0.5">Last synchronized: {lastSyncTime}</div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
-            <div className="text-[11px] font-semibold text-blue-700">Active Engine Model</div>
-            <div className="text-base font-bold text-blue-900 font-mono mt-1 truncate">{AICREDITS_CONFIG.model}</div>
-            <div className="text-[10px] text-blue-600 mt-0.5">High-speed neural inference</div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
-            <div className="text-[11px] font-semibold text-emerald-700">Available Quota Limit</div>
-            <div className="text-2xl font-bold text-emerald-900 font-mono mt-1">{maxQuota - usageCount}</div>
-            <div className="text-[10px] text-emerald-600 mt-0.5">Remaining credit allowance</div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-600">
-            <span>Quota Utilization</span>
-            <span className="font-bold font-mono">{usageCount} / {maxQuota} ({usagePercent}%)</span>
-          </div>
-          <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${usagePercent}%`,
-                background: usagePercent > 80 ? "#dc2626" : "var(--primary)",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-          <span className="text-slate-400">Endpoint: <code className="font-mono text-slate-600">{AICREDITS_CONFIG.baseUrl}</code></span>
           <button
-            onClick={handleResetAICounter}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-semibold transition-colors"
+            onClick={handleForceSync}
+            disabled={isSyncing}
+            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-800 transition-colors shadow-xs flex items-center gap-2"
           >
-            Reset Usage Counter
+            {isSyncing ? (
+              <>
+                <span className="animate-spin text-sm">🔄</span>
+                <span>Syncing Database...</span>
+              </>
+            ) : (
+              <>
+                <span>🔄</span>
+                <span>Sync Now with Cloud</span>
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* 3. Data Maintenance & Full Backup */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-100 mb-5">
+      {/* 3. Data Backup & Maintenance */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
           <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-lg">
             💾
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-800">Data Backup & Maintenance</h2>
-            <p className="text-[11px] text-slate-500">Download complete site state or reset data store to clean initial state.</p>
+            <p className="text-[11px] text-slate-500">
+              Export complete school database as JSON, restore existing backups, or clean database defaults.
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={handleDownloadBackup}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm flex items-center gap-2"
-            style={{ background: "var(--primary)" }}
-          >
-            <span>📥</span> Download Full JSON Backup
-          </button>
+        <div className="grid sm:grid-cols-2 gap-4 text-xs">
+          {/* Export JSON */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5 flex flex-col justify-between">
+            <div>
+              <div className="font-bold text-slate-800 text-sm">Export Full Backup</div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                Generates a complete JSON backup file containing all 8 modules (Admissions, Forms, Submissions, Notices, Events, Gallery, Inquiries, School Profile).
+              </div>
+            </div>
+            <button
+              onClick={handleDownloadBackup}
+              className="w-full py-2.5 rounded-xl font-bold text-white shadow-sm flex items-center justify-center gap-2"
+              style={{ background: "var(--primary)" }}
+            >
+              <span>📥</span> Download Full JSON Backup
+            </button>
+          </div>
+
+          {/* Import JSON */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5 flex flex-col justify-between">
+            <div>
+              <div className="font-bold text-slate-800 text-sm">Restore from Backup</div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                Upload a previously downloaded JSON backup file to overwrite or restore records in your database.
+              </div>
+            </div>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleRestoreFile}
+                className="hidden"
+                id="backup-upload-input"
+              />
+              <label
+                htmlFor="backup-upload-input"
+                className="w-full py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-2 transition-colors"
+              >
+                {isRestoring ? (
+                  <span>⏳ Restoring Data...</span>
+                ) : (
+                  <>
+                    <span>📤</span>
+                    <span>Upload & Restore JSON</span>
+                  </>
+                )}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Reset */}
+        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="text-slate-500">
+            Need to start fresh? Reset all admission and submission queues to initial defaults.
+          </div>
           <button
             onClick={handleResetData}
-            className="px-4 py-2.5 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 text-xs font-bold transition-colors"
+            className="px-4 py-2 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-bold transition-colors whitespace-nowrap"
           >
             ⚠️ Reset All Data to Clean Defaults
           </button>
@@ -274,3 +296,4 @@ export default function SettingsManager() {
     </div>
   );
 }
+

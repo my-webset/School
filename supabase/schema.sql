@@ -210,6 +210,20 @@ INSERT INTO public.gallery (id, title, category, image_url, date) VALUES
 ('gal-4', 'Cultural Performing Arts Festival', 'Cultural', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop', '2026-09-01')
 ON CONFLICT (id) DO NOTHING;
 
+-- 10. ONLINE & CONTACT INQUIRIES TABLE
+CREATE TABLE IF NOT EXISTS public.inquiries (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'New' CHECK (status IN ('New', 'Contacted', 'Resolved')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inquiries_status ON public.inquiries(status);
+CREATE INDEX IF NOT EXISTS idx_inquiries_created_at ON public.inquiries(created_at DESC);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
@@ -223,6 +237,7 @@ ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_info ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saved_papers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inquiries ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to active public content
 CREATE POLICY "Public can view published notices" ON public.notices FOR SELECT USING (published = true);
@@ -231,10 +246,11 @@ CREATE POLICY "Public can view gallery" ON public.gallery FOR SELECT USING (true
 CREATE POLICY "Public can view school info" ON public.school_info FOR SELECT USING (true);
 CREATE POLICY "Public can view published forms" ON public.custom_forms FOR SELECT USING (status = 'Published');
 
--- Allow public to submit admission forms & custom forms
+-- Allow public to submit admission forms & custom forms & inquiries
 CREATE POLICY "Public can submit admissions" ON public.admissions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public can lookup their admission status" ON public.admissions FOR SELECT USING (true);
 CREATE POLICY "Public can submit custom form responses" ON public.form_submissions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public can submit inquiries" ON public.inquiries FOR INSERT WITH CHECK (true);
 
 -- Allow full access to anon key / admin for management
 CREATE POLICY "Admin full access admissions" ON public.admissions FOR ALL USING (true) WITH CHECK (true);
@@ -246,3 +262,5 @@ CREATE POLICY "Admin full access gallery" ON public.gallery FOR ALL USING (true)
 CREATE POLICY "Admin full access school_info" ON public.school_info FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Admin full access saved_papers" ON public.saved_papers FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Admin full access site_settings" ON public.site_settings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Admin full access inquiries" ON public.inquiries FOR ALL USING (true) WITH CHECK (true);
+

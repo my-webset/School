@@ -48,6 +48,18 @@ export interface FormSubmission {
   submittedAt: string;
 }
 
+export type InquiryStatus = "New" | "Contacted" | "Resolved";
+
+export interface InquiryItem {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  message: string;
+  status: InquiryStatus;
+  createdAt: string;
+}
+
 export interface NoticeItem {
   id: string;
   title: string;

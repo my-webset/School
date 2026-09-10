@@ -5,15 +5,27 @@ import LOGOS from "../../assets/logos";
 export default function PublicContactPage() {
   const school = dataService.getSchoolInfo();
   const [sent, setSent] = useState(false);
+  const [inquiryId, setInquiryId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name || !form.phone || !form.message) {
+      alert("Please fill in your name, phone number, and message.");
+      return;
+    }
+    setIsSubmitting(true);
+    const newInquiry = dataService.addInquiry({
+      name: form.name,
+      email: form.email || "Not provided",
+      phone: form.phone,
+      message: form.message,
+    });
+
+    setInquiryId(newInquiry.id);
+    setIsSubmitting(false);
     setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      setForm({ name: "", email: "", phone: "", message: "" });
-    }, 3500);
   };
 
   return (
@@ -80,10 +92,29 @@ export default function PublicContactPage() {
           <p className="text-xs text-slate-500 mb-6">Our admission team will revert within 24 business hours.</p>
 
           {sent ? (
-            <div className="p-8 rounded-2xl bg-green-50 border border-green-200 text-center text-green-900 space-y-2">
+            <div className="p-8 rounded-2xl bg-green-50 border border-green-200 text-center text-green-900 space-y-3">
               <div className="text-3xl">🎉</div>
-              <div className="font-bold text-sm">Inquiry Message Received!</div>
-              <p className="text-xs text-green-700">Thank you for reaching out. We will contact you shortly.</p>
+              <div className="font-bold text-base">Inquiry Message Received!</div>
+              <p className="text-xs text-green-700 max-w-md mx-auto">
+                Thank you for reaching out to Nalanda International School. Your inquiry has been dispatched to our admissions team.
+              </p>
+              {inquiryId && (
+                <div className="bg-white/80 border border-green-200 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-green-800 inline-block">
+                  Reference ID: {inquiryId}
+                </div>
+              )}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSent(false);
+                    setForm({ name: "", email: "", phone: "", message: "" });
+                  }}
+                  className="px-4 py-2 bg-green-700 text-white rounded-xl text-xs font-semibold hover:bg-green-800 transition-colors"
+                >
+                  Send Another Message
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSend} className="space-y-4 text-xs">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { dataService } from "../../services/dataService";
 import { GalleryItem } from "../../types";
 
@@ -7,6 +7,10 @@ export default function GalleryManager() {
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
   const [filterCat, setFilterCat] = useState("All");
+  const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState({
     title: "",
     category: "Campus" as GalleryItem["category"],
@@ -28,10 +32,59 @@ export default function GalleryManager() {
     setTimeout(() => setToast(""), 2500);
   };
 
+  // Process selected image file from device storage/gallery
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file (PNG, JPG, JPEG, WebP).");
+      return;
+    }
+
+    setIsProcessingFile(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // Optimize and compress image if too large
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1600;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        setForm(f => ({
+          ...f,
+          imageUrl: compressedDataUrl,
+          title: f.title || file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
+        }));
+        setIsProcessingFile(false);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.imageUrl) {
-      alert("Please provide title and image URL.");
+      alert("Please provide a title and select/provide an image.");
       return;
     }
     dataService.addGalleryItem(form);
@@ -75,11 +128,20 @@ export default function GalleryManager() {
           </p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
+          onClick={() => {
+            setForm({
+              title: "",
+              category: "Campus",
+              imageUrl: "",
+              date: new Date().toISOString().split("T")[0],
+            });
+            setShowModal(true);
+          }}
+          className="px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-95 transition-opacity flex items-center gap-1.5"
           style={{ background: "var(--primary)" }}
         >
-          + Add New Photo
+          <span>+</span>
+          <span>Add New Photo</span>
         </button>
       </div>
 
@@ -105,7 +167,7 @@ export default function GalleryManager() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {filtered.length === 0 ? (
           <div className="col-span-full bg-white rounded-2xl border border-slate-100 p-16 text-center text-slate-400 text-xs">
-            No photos in this category. Click "+ Add New Photo" to upload highlights.
+            No photos in this category. Click "+ Add New Photo" to upload highlights from your device or gallery.
           </div>
         ) : (
           filtered.map(item => (
@@ -139,7 +201,7 @@ export default function GalleryManager() {
       {/* Add Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-lg" style={{ fontFamily: "DM Serif Display, serif" }}>
                 Add Gallery Photo
@@ -147,58 +209,138 @@ export default function GalleryManager() {
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSave} className="space-y-4 text-xs">
+              {/* Upload Mode Selector */}
+              <div className="flex rounded-xl bg-slate-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("file")}
+                  className={`flex-1 py-1.5 font-bold rounded-lg transition-all ${
+                    uploadMode === "file" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  📁 Upload from Device / Phone Gallery
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("url")}
+                  className={`flex-1 py-1.5 font-bold rounded-lg transition-all ${
+                    uploadMode === "url" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  🔗 Image Web URL
+                </button>
+              </div>
+
+              {/* Mode 1: File Upload */}
+              {uploadMode === "file" ? (
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1.5">Choose Photo from Device *</label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileSelect(f);
+                    }}
+                    className="hidden"
+                    id="gallery-file-picker"
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) handleFileSelect(f);
+                    }}
+                    className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/70 hover:bg-blue-50/20 transition-all"
+                  >
+                    {isProcessingFile ? (
+                      <div className="space-y-2 py-4">
+                        <div className="animate-spin text-2xl">⏳</div>
+                        <div className="font-semibold text-slate-700">Optimizing photo for cloud upload...</div>
+                      </div>
+                    ) : form.imageUrl ? (
+                      <div className="space-y-3">
+                        <img src={form.imageUrl} alt="Selected" className="h-40 w-full object-cover rounded-xl mx-auto shadow-sm" />
+                        <div className="text-[11px] font-bold text-blue-600 hover:underline">Click to choose a different photo</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 py-2">
+                        <div className="text-3xl">📷</div>
+                        <div className="font-bold text-slate-800 text-sm">Click to choose image or drag & drop</div>
+                        <div className="text-[11px] text-slate-400">Supports JPG, PNG, WEBP from your phone or computer</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Image URL *</label>
+                  <input
+                    required={uploadMode === "url"}
+                    type="url"
+                    value={form.imageUrl}
+                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none"
+                    placeholder="https://images.unsplash.com/..."
+                  />
+                  {form.imageUrl && (
+                    <div className="h-32 mt-2 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                      <img src={form.imageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">Photo Title / Caption *</label>
                 <input
                   required
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none"
                   placeholder="e.g. Science Fair Robotics Demonstration"
                 />
               </div>
 
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Category</label>
-                <select
-                  value={form.category}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value as any }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none"
-                >
-                  <option value="Campus">Campus Infrastructure</option>
-                  <option value="Sports">Sports & Athletics</option>
-                  <option value="Cultural">Cultural & Arts</option>
-                  <option value="Academics">Academic Labs & Classrooms</option>
-                  <option value="Events">Annual Day & Celebrations</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Image URL *</label>
-                <input
-                  required
-                  type="url"
-                  value={form.imageUrl}
-                  onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none"
-                  placeholder="https://images.unsplash.com/..."
-                />
-              </div>
-
-              {form.imageUrl && (
-                <div className="h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                  <img src={form.imageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value as any }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none"
+                  >
+                    <option value="Campus">Campus Infrastructure</option>
+                    <option value="Sports">Sports & Athletics</option>
+                    <option value="Cultural">Cultural & Arts</option>
+                    <option value="Academics">Academic Labs & Classrooms</option>
+                    <option value="Events">Annual Day & Celebrations</option>
+                  </select>
                 </div>
-              )}
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
 
               <div className="flex gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl font-bold text-white shadow-sm"
+                  disabled={!form.imageUrl || !form.title}
+                  className="flex-1 py-3 rounded-xl font-bold text-white shadow-sm disabled:opacity-50"
                   style={{ background: "var(--primary)" }}
                 >
-                  Add Photo
+                  Add Photo to Gallery
                 </button>
                 <button
                   type="button"
@@ -215,3 +357,4 @@ export default function GalleryManager() {
     </div>
   );
 }
+
