@@ -140,6 +140,12 @@ export async function generatePaperWithAI({
 }): Promise<AIPaperResult> {
   const { apiKey, baseUrl, model } = AICREDITS_CONFIG;
 
+  // HARD VALIDATION: Only gpt-4o-mini is authorized
+  if (model !== "gpt-4o-mini") {
+    console.error(`[aiClient] BLOCKED UNAUTHORIZED MODEL: "${model}". Only "gpt-4o-mini" is authorized.`);
+    throw new Error(`UNAUTHORIZED MODEL DETECTED: "${model}". Only "gpt-4o-mini" is authorized.`);
+  }
+
   // Track AI usage count in localStorage
   try {
     const raw = localStorage.getItem("nis_school_settings_v1");
