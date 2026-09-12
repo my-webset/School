@@ -6,7 +6,7 @@ const env = (import.meta as any).env ?? {};
 export const AICREDITS_CONFIG = {
   baseUrl: env.VITE_AICREDITS_BASE_URL || "https://aicredits.in/v1",
   apiKey: env.VITE_AICREDITS_API_KEY || "",
-  model: "openai/gpt-4o-mini",
+  model: env.VITE_AICREDITS_MODEL || "openai/gpt-4o-mini",
 };
 
 export interface PaperQuestion {
@@ -169,11 +169,19 @@ export async function generatePaperWithAI({
 }): Promise<AIPaperResult> {
   const { apiKey, baseUrl, model } = AICREDITS_CONFIG;
 
-  // HARD VALIDATION: Only gpt-4o-mini (or openai/gpt-4o-mini) is strictly authorized
-  const isAllowedModel = model === "gpt-4o-mini" || model === "openai/gpt-4o-mini";
+  const normalizedModel = model || "openai/gpt-4o-mini";
+  const isAllowedModel = normalizedModel === "gpt-4o-mini" || normalizedModel === "openai/gpt-4o-mini";
   if (!isAllowedModel) {
-    console.error(`[aiClient] BLOCKED UNAUTHORIZED MODEL: "${model}". Only "gpt-4o-mini" is permitted.`);
-    throw new Error(`UNAUTHORIZED MODEL DETECTED: "${model}". Only "gpt-4o-mini" is authorized.`);
+    console.error(`[aiClient] BLOCKED UNAUTHORIZED MODEL: "${normalizedModel}". Only "gpt-4o-mini" is permitted.`);
+    throw new Error(`UNAUTHORIZED MODEL DETECTED: "${normalizedModel}". Only "gpt-4o-mini" is authorized.`);
+  }
+
+  if (!apiKey) {
+    throw new Error("AI paper generation is unavailable because VITE_AICREDITS_API_KEY is missing. Check your environment variables.");
+  }
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    throw new Error("AI paper generation is unavailable because VITE_AICREDITS_BASE_URL is invalid.");
   }
 
   // Track AI usage count in localStorage
@@ -213,14 +221,14 @@ export async function generatePaperWithAI({
   const timeout = setTimeout(() => controller.abort(), 90000);
 
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: normalizedModel,
         messages,
         temperature: 0.3,
         max_tokens: 4096,
@@ -230,22 +238,24 @@ export async function generatePaperWithAI({
 
     clearTimeout(timeout);
 
-    if (response.ok) {
-      const data = await response.json();
-      const raw = data?.choices?.[0]?.message?.content ?? "";
-      const result = parseModelJson(raw, blueprint);
-      if (result) return result;
-    } else {
+    if (!response.ok) {
       const errorText = await response.text();
-      console.warn(`[aiClient] Remote API status (${response.status}): ${errorText}`);
+      const cleanError = errorText && errorText.length < 500 ? errorText : `HTTP ${response.status}`;
+      throw new Error(`AI provider rejected the paper request (${response.status}): ${cleanError}`);
     }
+
+    const data = await response.json();
+    const raw = data?.choices?.[0]?.message?.content ?? "";
+    const result = parseModelJson(raw, blueprint);
+    if (result) return result;
+
+    throw new Error("AI returned an empty or malformed paper payload. Please retry with a simpler prompt or check the provider response.");
   } catch (err: any) {
     clearTimeout(timeout);
-    console.warn("[aiClient] Live API call unavailable / exceeded, deploying smart curriculum generator:", err.message);
+    const finalError = err instanceof Error ? err : new Error("Unknown AI generation error.");
+    console.warn("[aiClient] Live AI call failed; surface the exact cause instead of silently generating a fake paper.", finalError.message);
+    throw finalError;
   }
-
-  // Generate deterministic, fully compliant question paper strictly following all user parameters
-  return generateDeterministicPaper(blueprint);
 }
 
 function parseModelJson(raw: string, blueprint: any): AIPaperResult | null {

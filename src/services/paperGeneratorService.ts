@@ -115,7 +115,7 @@ export class PaperGeneratorService {
         };
       }
     } catch (err) {
-      console.warn("generatePaperWithAI error, using curriculum generation:", err);
+      console.warn("generatePaperWithAI error; using local curriculum fallback only as a last resort:", err instanceof Error ? err.message : err);
     }
 
     // Curriculum generation strictly aligned to subject
