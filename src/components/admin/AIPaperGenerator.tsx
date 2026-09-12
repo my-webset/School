@@ -455,12 +455,17 @@ export default function AIPaperGenerator() {
               </div>
 
               {/* Reference Images */}
-              <div>
+              <div className="space-y-2">
                 <div
-                  className="border border-dashed border-slate-200 rounded-xl p-2 text-center cursor-pointer hover:border-blue-400 bg-slate-50/50"
+                  className="border border-dashed border-slate-200 rounded-xl p-2.5 text-center cursor-pointer hover:border-blue-400 bg-slate-50/50 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <span className="text-xs font-semibold text-slate-600">📷 Attach Reference Material ({images.length}/7)</span>
+                  <span className="text-xs font-semibold text-slate-600">
+                    📷 Attach Reference Material ({images.length}/7)
+                  </span>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Upload syllabus, sample questions, or textbook excerpts (JPG/PNG)
+                  </p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -470,6 +475,61 @@ export default function AIPaperGenerator() {
                     onChange={handleImagePick}
                   />
                 </div>
+
+                {images.length > 0 && (
+                  <div className="space-y-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200/80">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium px-0.5">
+                      <span>{images.length} of 7 attached</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImages([]);
+                          showToast("All reference images cleared");
+                        }}
+                        className="text-red-500 hover:text-red-700 hover:underline font-semibold text-[10px] transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {images.map((file, idx) => {
+                        const previewUrl = URL.createObjectURL(file);
+                        return (
+                          <div
+                            key={idx}
+                            className="relative group rounded-lg overflow-hidden border border-slate-200 bg-white aspect-square shadow-2xs"
+                          >
+                            <img
+                              src={previewUrl}
+                              alt={`ref-${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                              <span className="text-[9px] text-white font-medium px-1 text-center truncate max-w-full">
+                                {file.name}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(idx);
+                                showToast(`Removed ${file.name}`);
+                              }}
+                              className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-4.5 h-4.5 text-[10px] font-bold flex items-center justify-center shadow-md transition-transform hover:scale-110 z-10"
+                              title={`Remove ${file.name}`}
+                              aria-label={`Remove ${file.name}`}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Button */}
