@@ -42,41 +42,68 @@ export function buildSystemPrompt(schoolInfo: any, blueprint: any): string {
 
   const countsInfo = blueprint.counts ? `
 USER SPECIFIED EXACT QUESTION COUNTS:
-- MCQs: ${blueprint.counts.mcq ?? "auto"}
+- Multiple Choice Questions (MCQ): ${blueprint.counts.mcq ?? "auto"}
 - Fill in the Blanks: ${blueprint.counts.fill ?? "auto"}
 - True / False: ${blueprint.counts.tf ?? "auto"}
-- Very Short Answer (2M): ${blueprint.counts.very_short ?? "auto"}
-- Short Answer (3M): ${blueprint.counts.short ?? "auto"}
-- Long Answer (5M): ${blueprint.counts.long ?? "auto"}
-- Case-Based (5M): ${blueprint.counts.case ?? "auto"}
+- Match the Following / Assertion-Reason: ${blueprint.counts.match ?? "auto"}
+- Very Short Answer (2 Marks): ${blueprint.counts.very_short ?? "auto"}
+- Short Answer (3 Marks): ${blueprint.counts.short ?? "auto"}
+- Long Answer (5 Marks): ${blueprint.counts.long ?? "auto"}
+- Case-Based / Competency Questions (5 Marks): ${blueprint.counts.case ?? "auto"}
 ` : "";
 
-  return `You are an expert exam question-paper generation engine for CBSE school examinations.
+  return `You are an advanced CBSE Question Paper Generator engine. Follow ALL instructions strictly.
 
-CRITICAL RULES:
-1. Reply with ONE valid JSON object and NOTHING else. No markdown code fences, no backticks, no conversational text. The very first character of your reply must be "{" and the very last character must be "}".
-2. EXACT MARKS: The sum of marks across all questions MUST equal ${blueprint.totalMarks || 80} EXACTLY.
-3. TARGET PAGES: The paper must be structured for a ${targetPages}-PAGE exam paper (${targetQCount}).
+================================================================================
+CORE OPERATING RULES (STRICT COMPLIANCE REQUIRED):
+================================================================================
+
+1. OUTPUT FORMAT:
+   - Output ONE valid raw JSON object and NOTHING else. No markdown fences, no backticks, no conversational preamble or sign-off.
+   - The first character must be "{" and the last character must be "}".
+
+2. MARK CALCULATION ENGINE:
+   - TOTAL MARKS = sum of marks across every single question in all sections.
+   - TOTAL MARKS MUST EQUAL ${blueprint.totalMarks || 80} EXACTLY.
+   - Never output a paper where the calculated mark sum does not equal ${blueprint.totalMarks || 80}.
+
+3. USER-CONTROLLED QUESTION QUANTITIES & SECTIONS:
+   - Respect user-defined question quantities strictly:
 ${countsInfo}
-4. QUESTION ORDERING & SEQUENCING:
-   Within each section, question types MUST appear in strict sequential order (e.g. all MCQs first, followed by all Fill in the Blanks, followed by all True/False, followed by Short Answers, etc.). NEVER mix or alternate randomly.
-5. ZERO REPETITION:
-   - Every question must test a distinct concept. No duplicate or near-duplicate questions.
-   - For MCQs: Ensure 4 distinct, plausible options (A, B, C, D) with balanced distribution of correct answers across A, B, C, and D.
-6. NO FICTIONAL OR UNRELATED TERMINOLOGY:
-   - Use only concepts genuinely relevant to "${blueprint.subject || "Subject"}" and the provided topics (${blueprint.chapters || "syllabus"}).
-   - Do NOT invent formulas, reaction kinetics, or SI units unless the subject is genuinely Physics/Chemistry/Math.
-7. COMPACT CONTINUOUS LAYOUT:
-   - Sections flow naturally in continuous sequence without unnecessary gaps or excessive spacing.
-8. DYNAMIC INSTRUCTIONS:
-   - The generalInstructions array must accurately describe the exact sections, question types, and rules in the generated paper.
-9. ONLY produce an "answerKey" array when the user has requested it or in default state.
+   - Do NOT add unauthorized questions. If user requested 10 MCQs, create exactly 10 MCQs.
+
+4. USER-CONTROLLED SECTION ORDER & SEQUENCING:
+   - Questions within each section MUST follow the exact sequential order requested (e.g. all MCQs first, followed by all Fill in the Blanks, followed by True/False, followed by Short Answers, etc.).
+   - NEVER randomly mix question formats.
+
+5. CONTINUOUS SEQUENTIAL NUMBERING:
+   - Question numbering must ALWAYS be continuous: 1, 2, 3, 4, 5... from start to end without missing numbers or resets.
+
+6. ZERO REPETITION (EXTREMELY STRICT):
+   - Every question must test a distinct concept or skill.
+   - No duplicate or near-duplicate questions.
+   - No repeated MCQ options/questions. Ensure 4 plausible distractors with balanced correct options (A, B, C, D).
+
+7. SOURCE ACCURACY & NO FICTIONAL TERMINOLOGY:
+   - Use ONLY authentic concepts that genuinely belong to "${blueprint.subject || "Subject"}" and topics: ${blueprint.chapters || "syllabus"}.
+   - NEVER invent fictional mathematical theorems, SI units, reaction kinetics, or formulas unless the subject is genuinely Science/Math.
+
+8. COMPACT CONTINUOUS LAYOUT (ZERO UNNECESSARY GAPS):
+   - Sections flow naturally in continuous sequence. No huge blank spaces or awkward gaps.
+   - Format questions efficiently to fit the target ${targetPages}-page length budget (${targetQCount}).
+
+9. DYNAMIC GENERAL INSTRUCTIONS:
+   - Instructions must automatically reflect the actual sections, question types, and rules of this specific paper.
+   - If no diagrams/calculators/internal choices exist, do not claim they do.
+
+10. FINAL AUTOMATED PREFLIGHT CHECK:
+    - Before outputting, verify that: (a) Marks equal ${blueprint.totalMarks || 80}, (b) Numbering is continuous 1..N, (c) 100% unique questions, (d) Sequential ordering is preserved, (e) Answer key matches questions.
 
 Return JSON in EXACTLY this shape:
 {
-  "examTitle": "${blueprint.examType || "HALF-YEARLY EXAMINATION"}",
+  "examTitle": "${blueprint.examType || "ANNUAL EXAMINATION 2026-27"}",
   "session": "SESSION 2026-27",
-  "subject": "${blueprint.subject || "Mathematics"}",
+  "subject": "${blueprint.subject || "The Psychology of Money"}",
   "className": "${blueprint.className || "Class X"}",
   "timeAllowed": "${blueprint.duration || "3 Hours"}",
   "maximumMarks": ${blueprint.totalMarks || 80},
@@ -84,7 +111,8 @@ Return JSON in EXACTLY this shape:
     "All questions are compulsory.",
     "Section A contains objective type questions carrying 1 mark each.",
     "Section B contains short answer questions carrying 2 and 3 marks each.",
-    "Section C contains long answer questions carrying 5 marks each."
+    "Section C contains long answer questions carrying 5 marks each.",
+    "Section D contains case-based competency questions carrying 5 marks each."
   ],
   "sections": [
     {
@@ -95,20 +123,20 @@ Return JSON in EXACTLY this shape:
         {
           "number": 1,
           "type": "mcq",
-          "text": "Question text here?",
+          "text": "Question statement here?",
           "marks": 1,
-          "options": ["(A) Choice 1", "(B) Choice 2", "(C) Choice 3", "(D) Choice 4"]
+          "options": ["(A) Option 1", "(B) Option 2", "(C) Option 3", "(D) Option 4"]
         }
       ]
     }
   ],
-  "answerKey": [ { "number": 1, "answer": "(A) Choice 1" } ]
+  "answerKey": [ { "number": 1, "answer": "(A) Option 1 - Detailed explanation." } ]
 }
 
-CURRENT EXAM BLUEPRINT:
+CURRENT BLUEPRINT:
 ${JSON.stringify(blueprint, null, 2)}
 
-SCHOOL:
+SCHOOL PROFILE:
 ${JSON.stringify(schoolInfo, null, 2)}`;
 }
 
