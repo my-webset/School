@@ -6,7 +6,7 @@ const env = (import.meta as any).env ?? {};
 export const AICREDITS_CONFIG = {
   baseUrl: env.VITE_AICREDITS_BASE_URL || "https://aicredits.in/v1",
   apiKey: env.VITE_AICREDITS_API_KEY || "",
-  model: env.VITE_AICREDITS_MODEL || "openai/gpt-4o-mini",
+  model: "openai/gpt-4o-mini",
 };
 
 export interface PaperQuestion {

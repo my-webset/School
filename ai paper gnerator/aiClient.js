@@ -1,5 +1,5 @@
 // backend/services/aiClient.js
-// Wrapper around the aicredits.in OpenAI-compatible endpoint using gpt-5-nano.
+// Wrapper around the aicredits.in OpenAI-compatible endpoint using openai/gpt-4o-mini.
 // This is the ONLY place that talks to the model. It enforces a strict
 // system prompt so the model returns clean, structured JSON — never
 // conversational filler like "Sure! Here is your paper:".
@@ -8,7 +8,7 @@ function getAiConfig() {
   return {
     baseUrl: process.env.AICREDITS_BASE_URL || "https://aicredits.in/v1",
     apiKey: process.env.AICREDITS_API_KEY,
-    model: process.env.AICREDITS_MODEL || "gpt-5-nano",
+    model: "openai/gpt-4o-mini",
   };
 }
 
