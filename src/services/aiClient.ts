@@ -6,7 +6,7 @@ const env = (import.meta as any).env ?? {};
 export const AICREDITS_CONFIG = {
   baseUrl: env.VITE_AICREDITS_BASE_URL || "https://aicredits.in/v1",
   apiKey: env.VITE_AICREDITS_API_KEY || "",
-  model: env.VITE_AICREDITS_MODEL || "gpt-4o-mini",
+  model: env.VITE_AICREDITS_MODEL || "openai/gpt-4o-mini",
 };
 
 export interface PaperQuestion {
@@ -140,9 +140,10 @@ export async function generatePaperWithAI({
 }): Promise<AIPaperResult> {
   const { apiKey, baseUrl, model } = AICREDITS_CONFIG;
 
-  // HARD VALIDATION: Only gpt-4o-mini is authorized
-  if (model !== "gpt-4o-mini") {
-    console.error(`[aiClient] BLOCKED UNAUTHORIZED MODEL: "${model}". Only "gpt-4o-mini" is authorized.`);
+  // HARD VALIDATION: Only gpt-4o-mini (including provider prefix openai/gpt-4o-mini) is authorized
+  const isAllowedModel = model === "gpt-4o-mini" || model === "openai/gpt-4o-mini";
+  if (!isAllowedModel) {
+    console.error(`[aiClient] BLOCKED UNAUTHORIZED MODEL: "${model}". Only "gpt-4o-mini" / "openai/gpt-4o-mini" is authorized.`);
     throw new Error(`UNAUTHORIZED MODEL DETECTED: "${model}". Only "gpt-4o-mini" is authorized.`);
   }
 
