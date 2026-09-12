@@ -97,8 +97,8 @@ export default function HomePage({ setCurrentPage }: Props) {
         {/* Background Image with Overlay */}
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=1600&auto=format&fit=crop"
-            alt="School Campus"
+            src={school.heroImageUrl || "https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=1600&auto=format&fit=crop"}
+            alt={school.name}
             className="w-full h-full object-cover"
           />
           <div

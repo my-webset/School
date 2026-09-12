@@ -101,6 +101,10 @@ export interface SchoolInfo {
   email: string;
   website: string;
   about: string;
+  logoUrl?: string;
+  heroImageUrl?: string;
+  campusImageUrl?: string;
+  aboutUsImageUrl?: string;
   socials: {
     facebook?: string;
     instagram?: string;

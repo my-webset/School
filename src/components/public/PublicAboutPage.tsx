@@ -46,7 +46,7 @@ export default function PublicAboutPage({ setCurrentPage }: Props) {
           </div>
           <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-100">
             <img
-              src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800&auto=format&fit=crop"
+              src={school.aboutUsImageUrl || school.campusImageUrl || "https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800&auto=format&fit=crop"}
               alt="Campus"
               className="w-full h-72 object-cover"
             />

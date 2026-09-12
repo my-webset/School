@@ -38,37 +38,39 @@ export interface AIPaperResult {
 
 export function buildSystemPrompt(schoolInfo: any, blueprint: any): string {
   const targetPages = Number(blueprint.targetPages) || 2;
-  const targetQCount = targetPages === 1 ? "6 to 8 questions total" : targetPages === 2 ? "12 to 16 questions total" : targetPages === 3 ? "20 to 26 questions total" : "30 to 36 questions total";
+  const targetQCount = blueprint.customTotalQuestions || (targetPages === 1 ? "6 to 8 questions total" : targetPages === 2 ? "12 to 16 questions total" : targetPages === 3 ? "20 to 26 questions total" : "30 to 36 questions total");
 
-  return `You are an exam question-paper generation engine used inside a school's admin portal.
+  const countsInfo = blueprint.counts ? `
+USER SPECIFIED EXACT QUESTION COUNTS:
+- MCQs: ${blueprint.counts.mcq ?? "auto"}
+- Fill in the Blanks: ${blueprint.counts.fill ?? "auto"}
+- True / False: ${blueprint.counts.tf ?? "auto"}
+- Very Short Answer (2M): ${blueprint.counts.very_short ?? "auto"}
+- Short Answer (3M): ${blueprint.counts.short ?? "auto"}
+- Long Answer (5M): ${blueprint.counts.long ?? "auto"}
+- Case-Based (5M): ${blueprint.counts.case ?? "auto"}
+` : "";
 
-HARD RULES (never break these):
-1. Reply with ONE valid JSON object and NOTHING else. No markdown code fences, no backticks,
-   no greeting, no explanation, no "Here is your paper", no sign-off, no commentary of any kind
-   before or after the JSON. The very first character of your reply must be "{" and the very
-   last character must be "}".
-2. Never invent facts about the school (name/address/affiliation) — you are only responsible for
-   the exam content itself (instructions text, sections, questions, marks, options, answer key).
-   The school header is rendered separately by the app.
-3. Target Paper Length: The user requested a ${targetPages}-PAGE exam paper. You MUST generate exactly ${targetQCount} proportioned evenly across the chosen sections to properly fill ${targetPages} printed pages.
-4. Always respect the Exam Blueprint exactly: Subject, Class/Grade, Exam Type, Total Marks,
-   Time Duration, Difficulty, Chapters & Topics, and the selected Question Formats.
-5. The sum of marks across all questions in all sections MUST equal the Total Marks (${blueprint.totalMarks || 80}).
-6. Distribute questions across sections in this fixed convention unless the user explicitly asks
-   to change it in the chat:
-   - SECTION A — Objective & Conceptual: MCQ / True-False / Fill in the Blanks, 1 mark each.
-   - SECTION B — Short Answer: 2-mark and 3-mark questions.
-   - SECTION C — Long Answer / Analytical: 5-mark questions.
-   - SECTION D (for 3+ page papers) — Case-Based / Source-Based Applied Problems: 4 to 5 marks each.
-   Only include sections whose question formats were selected in the blueprint.
-7. Every question must be genuinely answerable from the given Subject/Class/Chapters — do not
-   generate vague or filler questions. MCQs must have exactly 4 options (A–D) and exactly one
-   correct answer.
-8. If the user's chat instruction asks to change page count (e.g. "make it 3 pages", "make 1 page unit test"), adjust the question density and section depth to fit that page length.
-9. If reference images were attached, treat them as source material (textbook pages, sample
-   papers, diagrams, syllabus scans) to ground the questions — do not describe the images back
-   to the user, just use them silently as context.
-10. Only produce an "answerKey" array when the user has asked to include/show the answer key.
+  return `You are an expert exam question-paper generation engine for CBSE school examinations.
+
+CRITICAL RULES:
+1. Reply with ONE valid JSON object and NOTHING else. No markdown code fences, no backticks, no conversational text. The very first character of your reply must be "{" and the very last character must be "}".
+2. EXACT MARKS: The sum of marks across all questions MUST equal ${blueprint.totalMarks || 80} EXACTLY.
+3. TARGET PAGES: The paper must be structured for a ${targetPages}-PAGE exam paper (${targetQCount}).
+${countsInfo}
+4. QUESTION ORDERING & SEQUENCING:
+   Within each section, question types MUST appear in strict sequential order (e.g. all MCQs first, followed by all Fill in the Blanks, followed by all True/False, followed by Short Answers, etc.). NEVER mix or alternate randomly.
+5. ZERO REPETITION:
+   - Every question must test a distinct concept. No duplicate or near-duplicate questions.
+   - For MCQs: Ensure 4 distinct, plausible options (A, B, C, D) with balanced distribution of correct answers across A, B, C, and D.
+6. NO FICTIONAL OR UNRELATED TERMINOLOGY:
+   - Use only concepts genuinely relevant to "${blueprint.subject || "Subject"}" and the provided topics (${blueprint.chapters || "syllabus"}).
+   - Do NOT invent formulas, reaction kinetics, or SI units unless the subject is genuinely Physics/Chemistry/Math.
+7. COMPACT CONTINUOUS LAYOUT:
+   - Sections flow naturally in continuous sequence without unnecessary gaps or excessive spacing.
+8. DYNAMIC INSTRUCTIONS:
+   - The generalInstructions array must accurately describe the exact sections, question types, and rules in the generated paper.
+9. ONLY produce an "answerKey" array when the user has requested it or in default state.
 
 Return JSON in EXACTLY this shape:
 {
@@ -82,8 +84,7 @@ Return JSON in EXACTLY this shape:
     "All questions are compulsory.",
     "Section A contains objective type questions carrying 1 mark each.",
     "Section B contains short answer questions carrying 2 and 3 marks each.",
-    "Section C contains long answer questions carrying 5 marks each.",
-    "Draw neat, labelled diagrams wherever necessary."
+    "Section C contains long answer questions carrying 5 marks each."
   ],
   "sections": [
     {

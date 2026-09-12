@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { dataService } from "../../services/dataService";
 import { SchoolInfo } from "../../types";
 import LOGOS from "../../assets/logos";
@@ -7,6 +7,11 @@ export default function SchoolInfoManager() {
   const [info, setInfo] = useState<SchoolInfo>(dataService.getSchoolInfo());
   const [tab, setTab] = useState("general");
   const [toast, setToast] = useState("");
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const heroInputRef = useRef<HTMLInputElement>(null);
+  const campusInputRef = useRef<HTMLInputElement>(null);
+  const aboutInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setInfo(dataService.getSchoolInfo());
@@ -20,7 +25,43 @@ export default function SchoolInfoManager() {
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     dataService.saveSchoolInfo(info);
-    showToast("School Information saved & updated across the website!");
+    showToast("School Information and Branding saved & updated globally across the website!");
+  };
+
+  const handleImageUpload = (file: File, key: "logoUrl" | "heroImageUrl" | "campusImageUrl" | "aboutUsImageUrl") => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const maxDimension = key === "logoUrl" ? 500 : 1600;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          setInfo(prev => ({ ...prev, [key]: compressedDataUrl }));
+          showToast(`Image uploaded for ${key}! Click 'Save Changes' to apply everywhere.`);
+        }
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -36,10 +77,10 @@ export default function SchoolInfoManager() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800" style={{ fontFamily: "DM Serif Display, serif" }}>
-            School Profile & Branding Information
+            School Profile & Branding System
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Update official school details, contact info, principal desk, and social links displayed site-wide.
+            Update official school details, logo, hero banner, campus photos, and social links displayed globally site-wide.
           </p>
         </div>
         <button
@@ -47,15 +88,16 @@ export default function SchoolInfoManager() {
           className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
           style={{ background: "var(--primary)" }}
         >
-          Save & Publish Changes
+          Save & Publish Globally
         </button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sub-tabs */}
-        <div className="lg:w-56 flex-shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm p-2 space-y-1 h-fit">
+        <div className="lg:w-60 flex-shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm p-2 space-y-1 h-fit">
           {[
             { id: "general", label: "General & Affiliation", icon: "🏫" },
+            { id: "branding", label: "Branding & Images", icon: "🎨" },
             { id: "principal", label: "Principal's Desk", icon: "👩‍💼" },
             { id: "contact", label: "Contact & Address", icon: "📍" },
             { id: "socials", label: "Social Media Links", icon: "🌐" },
@@ -81,10 +123,16 @@ export default function SchoolInfoManager() {
             {tab === "general" && (
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <img src={LOGOS.schoolLogo} alt="Logo" className="w-16 h-16 object-contain p-1 bg-white rounded-xl shadow-xs" />
+                  <img
+                    src={info.logoUrl || LOGOS.schoolLogo}
+                    alt="Logo"
+                    className="w-16 h-16 object-contain p-1 bg-white rounded-xl shadow-xs"
+                  />
                   <div>
                     <div className="font-bold text-slate-800 text-xs">Official School Crest / Logo</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">Asset mapped from <code>logo/school logo.png</code></div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      To replace the crest image everywhere, switch to the <strong>Branding & Images</strong> tab.
+                    </div>
                   </div>
                 </div>
 
@@ -147,7 +195,168 @@ export default function SchoolInfoManager() {
               </div>
             )}
 
-            {/* 2. Principal's Desk */}
+            {/* 2. Branding & Global Images */}
+            {tab === "branding" && (
+              <div className="space-y-6">
+                <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-2xl text-[11px] text-blue-900 leading-relaxed">
+                  💡 <strong>Global Brand Asset Engine:</strong> Updating any image below immediately replaces that asset across the entire website, exam question paper headers, admission forms, and public pages.
+                </div>
+
+                {/* 1. School Logo */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-800 text-xs">1. Official School Logo / Crest</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Used in Header, Footer, Admin Dashboard, and Exam Papers</div>
+                    </div>
+                    <img
+                      src={info.logoUrl || LOGOS.schoolLogo}
+                      alt="Logo Preview"
+                      className="w-12 h-12 object-contain bg-white rounded-xl border border-slate-200 p-1 shadow-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Or enter image URL (https://...)"
+                      value={info.logoUrl || ""}
+                      onChange={e => setInfo(prev => ({ ...prev, logoUrl: e.target.value }))}
+                      className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="px-3.5 py-2 bg-slate-800 text-white font-semibold rounded-xl text-xs hover:bg-black transition-colors"
+                    >
+                      📁 Upload File
+                    </button>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], "logoUrl")}
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Hero Cover Image */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-800 text-xs">2. Hero Banner / Cover Page Image</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Used on Home Page Hero & Optional Exam Cover Pages</div>
+                    </div>
+                    <img
+                      src={info.heroImageUrl || "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=600&q=80"}
+                      alt="Hero Preview"
+                      className="w-16 h-10 object-cover bg-white rounded-xl border border-slate-200 shadow-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter banner image URL (https://...)"
+                      value={info.heroImageUrl || ""}
+                      onChange={e => setInfo(prev => ({ ...prev, heroImageUrl: e.target.value }))}
+                      className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => heroInputRef.current?.click()}
+                      className="px-3.5 py-2 bg-slate-800 text-white font-semibold rounded-xl text-xs hover:bg-black transition-colors"
+                    >
+                      📁 Upload File
+                    </button>
+                    <input
+                      ref={heroInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], "heroImageUrl")}
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Campus Image */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-800 text-xs">3. Campus Infrastructure Image</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Used in Facilities, Campus section, and document backgrounds</div>
+                    </div>
+                    <img
+                      src={info.campusImageUrl || "https://images.unsplash.com/photo-1562774053-701939374585?w=600&q=80"}
+                      alt="Campus Preview"
+                      className="w-16 h-10 object-cover bg-white rounded-xl border border-slate-200 shadow-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter campus image URL (https://...)"
+                      value={info.campusImageUrl || ""}
+                      onChange={e => setInfo(prev => ({ ...prev, campusImageUrl: e.target.value }))}
+                      className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => campusInputRef.current?.click()}
+                      className="px-3.5 py-2 bg-slate-800 text-white font-semibold rounded-xl text-xs hover:bg-black transition-colors"
+                    >
+                      📁 Upload File
+                    </button>
+                    <input
+                      ref={campusInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], "campusImageUrl")}
+                    />
+                  </div>
+                </div>
+
+                {/* 4. About Us Image */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-800 text-xs">4. About Us & Academic Philosophy Image</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Used in the Public About page and institutional profiles</div>
+                    </div>
+                    <img
+                      src={info.aboutUsImageUrl || "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&q=80"}
+                      alt="About Preview"
+                      className="w-16 h-10 object-cover bg-white rounded-xl border border-slate-200 shadow-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter About Us image URL (https://...)"
+                      value={info.aboutUsImageUrl || ""}
+                      onChange={e => setInfo(prev => ({ ...prev, aboutUsImageUrl: e.target.value }))}
+                      className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => aboutInputRef.current?.click()}
+                      className="px-3.5 py-2 bg-slate-800 text-white font-semibold rounded-xl text-xs hover:bg-black transition-colors"
+                    >
+                      📁 Upload File
+                    </button>
+                    <input
+                      ref={aboutInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], "aboutUsImageUrl")}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Principal's Desk */}
             {tab === "principal" && (
               <div className="space-y-4">
                 <div>
@@ -172,7 +381,7 @@ export default function SchoolInfoManager() {
               </div>
             )}
 
-            {/* 3. Contact & Address */}
+            {/* 4. Contact & Address */}
             {tab === "contact" && (
               <div className="space-y-4">
                 <div>
@@ -217,7 +426,7 @@ export default function SchoolInfoManager() {
               </div>
             )}
 
-            {/* 4. Socials */}
+            {/* 5. Socials */}
             {tab === "socials" && (
               <div className="space-y-4">
                 <div>
@@ -258,7 +467,7 @@ export default function SchoolInfoManager() {
                 className="px-6 py-2.5 rounded-xl font-bold text-white shadow-sm"
                 style={{ background: "var(--primary)" }}
               >
-                Save Changes
+                Save Changes Globally
               </button>
             </div>
           </form>
