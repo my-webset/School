@@ -139,18 +139,55 @@ export default function AIPaperGenerator() {
 
     let effectiveBlueprint = { ...blueprint };
 
-    // Natural Language Command Parser
-    const pageMatch = cmd.match(/(\d+)\s*(?:page|pages)/i);
+    // Comprehensive Natural Language & Parameter Command Parser
+    const pageMatch = cmd.match(/(?:pages?|page count)[:\s]+(\d+)/i) || cmd.match(/(\d+)\s*(?:page|pages)\b/i);
     if (pageMatch && pageMatch[1]) {
       const pCount = Math.min(Math.max(parseInt(pageMatch[1], 10), 1), 6);
       effectiveBlueprint.targetPages = pCount;
     }
 
-    const marksMatch = cmd.match(/(\d+)\s*(?:mark|marks)/i);
+    const marksMatch = cmd.match(/(?:total marks?|max marks?|marks?)[:\s]+(\d+)/i) || cmd.match(/(\d+)\s*(?:mark|marks)\b/i);
     if (marksMatch && marksMatch[1]) {
       effectiveBlueprint.totalMarks = parseInt(marksMatch[1], 10);
     }
 
+    // Question count parsers
+    const updatedCounts = { ...effectiveBlueprint.counts };
+    const mcqM = cmd.match(/(?:mcqs?|multiple choice)[:\s]+(\d+)/i);
+    if (mcqM && mcqM[1]) updatedCounts.mcq = parseInt(mcqM[1], 10);
+
+    const fillM = cmd.match(/(?:fill in the blanks?|fill ups?|fill blanks?|fib)[:\s]+(\d+)/i);
+    if (fillM && fillM[1]) updatedCounts.fill = parseInt(fillM[1], 10);
+
+    const tfM = cmd.match(/(?:true\/?false|true or false|t\/f)[:\s]+(\d+)/i);
+    if (tfM && tfM[1]) updatedCounts.tf = parseInt(tfM[1], 10);
+
+    const matchM = cmd.match(/(?:match the following|assertion & reason|assertion)[:\s]+(\d+)/i);
+    if (matchM && matchM[1]) updatedCounts.match = parseInt(matchM[1], 10);
+
+    const vsaM = cmd.match(/(?:very short answer|very short|vsa)[:\s]+(\d+)/i);
+    if (vsaM && vsaM[1]) updatedCounts.very_short = parseInt(vsaM[1], 10);
+
+    const saM = cmd.match(/(?:short answer|short|sa)[:\s]+(\d+)/i);
+    if (saM && saM[1]) updatedCounts.short = parseInt(saM[1], 10);
+
+    const laM = cmd.match(/(?:long answer|long|la)[:\s]+(\d+)/i);
+    if (laM && laM[1]) updatedCounts.long = parseInt(laM[1], 10);
+
+    const caseM = cmd.match(/(?:case-based|competency|case study|case)[:\s]+(\d+)/i);
+    if (caseM && caseM[1]) updatedCounts.case = parseInt(caseM[1], 10);
+
+    // Subject / Class / Exam Name parser
+    const subjectM = cmd.match(/subject[:\s]+([^\n\*,]+)/i);
+    if (subjectM && subjectM[1]) effectiveBlueprint.subject = subjectM[1].trim();
+
+    const classM = cmd.match(/class[:\s]+([^\n\*,]+)/i);
+    if (classM && classM[1]) effectiveBlueprint.className = classM[1].trim();
+
+    const examM = cmd.match(/exam name[:\s]+([^\n\*,]+)/i);
+    if (examM && examM[1]) effectiveBlueprint.examType = examM[1].trim();
+
+    effectiveBlueprint.counts = updatedCounts;
     setBlueprint(effectiveBlueprint);
 
     const isFreshGeneration = /^(generate the paper|regenerate the paper|regenerate from scratch|create the paper)$/i.test(cmd);
