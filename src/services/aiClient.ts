@@ -3,10 +3,22 @@
 
 const env = (import.meta as any).env ?? {};
 
+const AUTHORIZED_AI_MODEL = "openai/gpt-4o-mini";
+
+const normalizeAuthorizedModel = (value?: string): string => {
+  const raw = (value || AUTHORIZED_AI_MODEL).trim();
+  if (raw === "gpt-4o-mini" || raw === AUTHORIZED_AI_MODEL) {
+    return raw;
+  }
+
+  console.warn(`[aiClient] Invalid model "${raw}" detected. Falling back to authorized model "${AUTHORIZED_AI_MODEL}".`);
+  return AUTHORIZED_AI_MODEL;
+};
+
 export const AICREDITS_CONFIG = {
   baseUrl: env.VITE_AICREDITS_BASE_URL || "https://aicredits.in/v1",
   apiKey: env.VITE_AICREDITS_API_KEY || "",
-  model: env.VITE_AICREDITS_MODEL || "openai/gpt-4o-mini",
+  model: normalizeAuthorizedModel(env.VITE_AICREDITS_MODEL),
 };
 
 export interface PaperQuestion {
@@ -169,12 +181,7 @@ export async function generatePaperWithAI({
 }): Promise<AIPaperResult> {
   const { apiKey, baseUrl, model } = AICREDITS_CONFIG;
 
-  const normalizedModel = model || "openai/gpt-4o-mini";
-  const isAllowedModel = normalizedModel === "gpt-4o-mini" || normalizedModel === "openai/gpt-4o-mini";
-  if (!isAllowedModel) {
-    console.error(`[aiClient] BLOCKED UNAUTHORIZED MODEL: "${normalizedModel}". Only "gpt-4o-mini" is permitted.`);
-    throw new Error(`UNAUTHORIZED MODEL DETECTED: "${normalizedModel}". Only "gpt-4o-mini" is authorized.`);
-  }
+  const normalizedModel = normalizeAuthorizedModel(model);
 
   if (!apiKey) {
     throw new Error("AI paper generation is unavailable because VITE_AICREDITS_API_KEY is missing. Check your environment variables.");
