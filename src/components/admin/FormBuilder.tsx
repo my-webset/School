@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { dataService } from "../../services/dataService";
 import { CustomForm, FormField, FormSubmission } from "../../types";
-import FormQRModal from "./FormQRModal";
 
 
 const FIELD_PALETTE = [
@@ -44,7 +43,6 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
   const [selectedFieldId, setSelectedFieldId] = useState<string>("f_1");
   const [toast, setToast] = useState("");
   const [previewData, setPreviewData] = useState<Record<string, any>>({});
-  const [qrModalForm, setQrModalForm] = useState<CustomForm | null>(null);
 
 
   const refreshData = () => {
@@ -308,13 +306,6 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setQrModalForm(f)}
-                            className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-1 rounded-lg flex items-center gap-1 shadow-xs"
-                            title="Generate and Share QR Code"
-                          >
-                            <span>📱</span> QR Code
-                          </button>
                           <button
                             onClick={() => handleCopyFormLink(f.id)}
                             className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-1"
@@ -598,25 +589,6 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
                 />
               </div>
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                {activeFormId !== "new-form" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentForm = forms.find(f => f.id === activeFormId) || {
-                        id: activeFormId,
-                        name: formName,
-                        description: formDesc,
-                        status: "Published",
-                        fields,
-                        createdAt: new Date().toISOString().split("T")[0],
-                      };
-                      setQrModalForm(currentForm as any);
-                    }}
-                    className="px-3 py-1.5 text-xs font-bold rounded-xl border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 flex items-center gap-1.5 shadow-xs"
-                  >
-                    <span>📱</span> Share QR Code
-                  </button>
-                )}
                 <div className="flex items-center gap-2 ml-auto">
                   <button
                     onClick={() => handleSaveForm("Draft")}
@@ -803,18 +775,6 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
           </div>
         </div>
       )}
-
-      {/* QR Code Viewer & Downloader Modal */}
-      {qrModalForm && (
-        <FormQRModal
-          formId={qrModalForm.id}
-          formName={qrModalForm.name}
-          formDesc={qrModalForm.description}
-          onClose={() => setQrModalForm(null)}
-        />
-      )}
-
-      {/* QR Code Scanner Camera Modal */}
 
     </div>
   );

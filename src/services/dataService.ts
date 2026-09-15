@@ -1081,32 +1081,6 @@ class DataService {
     supabase.delete("saved_papers", `id=eq.${id}`).catch(() => {});
   }
 
-  // --- DYNAMIC STATS ---
-  getStats() {
-    const admissions = this.getAdmissions();
-    const today = new Date().toISOString().split("T")[0];
-    const todayCount = admissions.filter(a => a.createdAt.startsWith(today)).length;
-    const pendingCount = admissions.filter(a => a.status === "Pending").length;
-    const approvedCount = admissions.filter(a => a.status === "Approved").length;
-    const rejectedCount = admissions.filter(a => a.status === "Rejected").length;
-    const totalSubmissions = this.getSubmissions().length;
-    const inquiries = this.getInquiries();
-    const newInquiries = inquiries.filter(i => i.status === "New").length;
-
-    return {
-      totalApplications: admissions.length,
-      pendingApplications: pendingCount,
-      approvedApplications: approvedCount,
-      rejectedApplications: rejectedCount,
-      todaySubmissions: todayCount,
-      totalCustomFormSubmissions: totalSubmissions,
-      totalNotices: this.getNotices().filter(n => n.published).length,
-      totalEvents: this.getEvents().filter(e => e.published).length,
-      totalInquiries: inquiries.length,
-      newInquiries: newInquiries,
-    };
-  }
-
   // --- FULL JSON BACKUP & RESTORE ---
   exportFullBackupJSON() {
     const backup = {
