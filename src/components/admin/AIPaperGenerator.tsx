@@ -6,15 +6,7 @@ import LOGOS from "../../assets/logos";
 
 const STORAGE_SAVED_PAPERS = "nis_saved_papers_v2";
 
-interface QuestionCounts {
-  mcq: number;
-  fill: number;
-  tf: number;
-  very_short: number;
-  short: number;
-  long: number;
-  case: number;
-}
+
 
 export default function AIPaperGenerator() {
   const school = dataService.getSchoolInfo();
@@ -29,17 +21,7 @@ export default function AIPaperGenerator() {
     duration: "3 Hours",
     difficulty: "Mixed (Standard)",
     chapters: "Financial Behavior, Compounding, Wealth vs Income, Room for Error, Saving Habits, Autonomy & Freedom",
-    sectionOrder: ["mcq", "fill", "tf", "very_short", "short", "long", "case"],
     customInstructions: "",
-    counts: {
-      mcq: 10,
-      fill: 5,
-      tf: 5,
-      very_short: 4,
-      short: 4,
-      long: 4,
-      case: 4,
-    } as QuestionCounts,
   });
 
   const [images, setImages] = useState<File[]>([]);
@@ -48,8 +30,6 @@ export default function AIPaperGenerator() {
   const [instruction, setInstruction] = useState("");
   const [paper, setPaper] = useState<AIPaperResult | null>(null);
   const [showAnswerKey, setShowAnswerKey] = useState(false);
-  const [viewMode, setViewMode] = useState<"continuous" | "multipage">("continuous");
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
@@ -70,15 +50,6 @@ export default function AIPaperGenerator() {
   };
 
   const updateField = (field: string, value: any) => setBlueprint((b) => ({ ...b, [field]: value }));
-  const updateCount = (key: keyof QuestionCounts, delta: number) => {
-    setBlueprint((b) => ({
-      ...b,
-      counts: {
-        ...b.counts,
-        [key]: Math.max(0, (b.counts[key] || 0) + delta),
-      },
-    }));
-  };
 
   function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files || []);
@@ -141,32 +112,6 @@ export default function AIPaperGenerator() {
       effectiveBlueprint.totalMarks = parseInt(marksMatch[1], 10);
     }
 
-    // Question count parsers
-    const updatedCounts = { ...effectiveBlueprint.counts };
-    const mcqM = cmd.match(/(?:mcqs?|multiple choice)[:\s]+(\d+)/i);
-    if (mcqM && mcqM[1]) updatedCounts.mcq = parseInt(mcqM[1], 10);
-
-    const fillM = cmd.match(/(?:fill in the blanks?|fill ups?|fill blanks?|fib)[:\s]+(\d+)/i);
-    if (fillM && fillM[1]) updatedCounts.fill = parseInt(fillM[1], 10);
-
-    const tfM = cmd.match(/(?:true\/?false|true or false|t\/f)[:\s]+(\d+)/i);
-    if (tfM && tfM[1]) updatedCounts.tf = parseInt(tfM[1], 10);
-
-    const matchM = cmd.match(/(?:match the following|assertion & reason|assertion)[:\s]+(\d+)/i);
-    if (matchM && matchM[1]) updatedCounts.match = parseInt(matchM[1], 10);
-
-    const vsaM = cmd.match(/(?:very short answer|very short|vsa)[:\s]+(\d+)/i);
-    if (vsaM && vsaM[1]) updatedCounts.very_short = parseInt(vsaM[1], 10);
-
-    const saM = cmd.match(/(?:short answer|short|sa)[:\s]+(\d+)/i);
-    if (saM && saM[1]) updatedCounts.short = parseInt(saM[1], 10);
-
-    const laM = cmd.match(/(?:long answer|long|la)[:\s]+(\d+)/i);
-    if (laM && laM[1]) updatedCounts.long = parseInt(laM[1], 10);
-
-    const caseM = cmd.match(/(?:case-based|competency|case study|case)[:\s]+(\d+)/i);
-    if (caseM && caseM[1]) updatedCounts.case = parseInt(caseM[1], 10);
-
     // Subject / Class / Exam Name parser
     const subjectM = cmd.match(/subject[:\s]+([^\n\*,]+)/i);
     if (subjectM && subjectM[1]) effectiveBlueprint.subject = subjectM[1].trim();
@@ -177,8 +122,8 @@ export default function AIPaperGenerator() {
     const examM = cmd.match(/exam name[:\s]+([^\n\*,]+)/i);
     if (examM && examM[1]) effectiveBlueprint.examType = examM[1].trim();
 
-    effectiveBlueprint.counts = updatedCounts;
     setBlueprint(effectiveBlueprint);
+
 
     const isFreshGeneration = /^(generate the paper|regenerate the paper|regenerate from scratch|create the paper)$/i.test(cmd);
     const effectiveHistory = isFreshGeneration ? [] : history;
@@ -380,49 +325,7 @@ export default function AIPaperGenerator() {
               </div>
             </div>
 
-            {/* Exact Question Counts Configuration */}
-            <div className="space-y-2 border border-slate-100 rounded-2xl p-3 bg-slate-50/50">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 pb-1 border-b border-slate-200/60">
-                <span>Question Types & Quantity</span>
-                <span className="text-[10px] text-slate-400 font-normal">Exact numbers</span>
-              </div>
-              <div className="space-y-1.5 text-xs text-slate-700">
-                {[
-                  { key: "mcq" as const, label: "Multiple Choice (MCQ)", marks: "1M" },
-                  { key: "fill" as const, label: "Fill in the Blanks", marks: "1M" },
-                  { key: "tf" as const, label: "True / False", marks: "1M" },
-                  { key: "very_short" as const, label: "Very Short Answers", marks: "2M" },
-                  { key: "short" as const, label: "Short Answers", marks: "3M" },
-                  { key: "long" as const, label: "Long Answers", marks: "5M" },
-                  { key: "case" as const, label: "Case-Based / Competency", marks: "5M" },
-                ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between py-0.5">
-                    <span className="text-[11px] font-medium text-slate-600">
-                      {item.label} <span className="text-[10px] text-slate-400">({item.marks})</span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => updateCount(item.key, -1)}
-                        className="w-5 h-5 rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-xs"
-                      >
-                        -
-                      </button>
-                      <span className="w-5 text-center font-mono font-bold text-xs text-slate-800">
-                        {blueprint.counts[item.key] || 0}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateCount(item.key, 1)}
-                        className="w-5 h-5 rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-xs"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+
 
             {/* Basic Blueprint Inputs */}
             <div className="space-y-3 text-xs">
