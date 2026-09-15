@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { dataService } from "../../services/dataService";
 import { CustomForm, FormField, FormSubmission } from "../../types";
 import FormQRModal from "./FormQRModal";
-import QRScannerModal from "./QRScannerModal";
+
 
 const FIELD_PALETTE = [
   { type: "text", label: "Short Text", desc: "Single-line text input", icon: "Aa" },
@@ -45,7 +45,7 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
   const [toast, setToast] = useState("");
   const [previewData, setPreviewData] = useState<Record<string, any>>({});
   const [qrModalForm, setQrModalForm] = useState<CustomForm | null>(null);
-  const [scannerOpen, setScannerOpen] = useState(false);
+
 
   const refreshData = () => {
     setForms(dataService.getForms());
@@ -210,14 +210,7 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setScannerOpen(true)}
-            className="px-3.5 py-2 text-xs rounded-xl font-bold bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 flex items-center gap-1.5 transition-all shadow-xs"
-            title="Scan Form QR Code with Camera"
-          >
-            <span>📷</span> Scan QR
-          </button>
+          
           <button
             onClick={() => setTab("builder")}
             className={`px-3.5 py-2 text-xs rounded-xl font-semibold transition-all ${
@@ -822,22 +815,7 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
       )}
 
       {/* QR Code Scanner Camera Modal */}
-      {scannerOpen && (
-        <QRScannerModal
-          onClose={() => setScannerOpen(false)}
-          onSelectForm={(scannedId) => {
-            setScannerOpen(false);
-            const found = forms.find(f => f.id === scannedId);
-            if (found) {
-              handleEditForm(found);
-              showToast(`Loaded form: "${found.name}" from scanned QR code!`);
-            } else {
-              window.open(`${window.location.origin}${window.location.pathname}?formId=${scannedId}`, "_blank");
-              showToast(`Opening scanned form link...`);
-            }
-          }}
-        />
-      )}
+
     </div>
   );
 }
