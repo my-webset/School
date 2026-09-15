@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { dataService } from "../../services/dataService";
 import LOGOS from "../../assets/logos";
 
@@ -6,7 +7,15 @@ interface Props {
 }
 
 export default function PublicAboutPage({ setCurrentPage }: Props) {
-  const school = dataService.getSchoolInfo();
+  const [school, setSchool] = useState(() => dataService.getSchoolInfo());
+
+  useEffect(() => {
+    setSchool(dataService.getSchoolInfo());
+    const unsub = dataService.subscribe(() => {
+      setSchool(dataService.getSchoolInfo());
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <div className="min-h-screen pb-20" style={{ background: "var(--background)" }}>

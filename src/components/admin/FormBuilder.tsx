@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { dataService } from "../../services/dataService";
 import { CustomForm, FormField, FormSubmission } from "../../types";
+import FormQRModal from "./FormQRModal";
+import QRScannerModal from "./QRScannerModal";
 
 const FIELD_PALETTE = [
   { type: "text", label: "Short Text", desc: "Single-line text input", icon: "Aa" },
@@ -42,6 +44,8 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
   const [selectedFieldId, setSelectedFieldId] = useState<string>("f_1");
   const [toast, setToast] = useState("");
   const [previewData, setPreviewData] = useState<Record<string, any>>({});
+  const [qrModalForm, setQrModalForm] = useState<CustomForm | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const refreshData = () => {
     setForms(dataService.getForms());
@@ -207,6 +211,14 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="px-3.5 py-2 text-xs rounded-xl font-bold bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 flex items-center gap-1.5 transition-all shadow-xs"
+            title="Scan Form QR Code with Camera"
+          >
+            <span>📷</span> Scan QR
+          </button>
+          <button
             onClick={() => setTab("builder")}
             className={`px-3.5 py-2 text-xs rounded-xl font-semibold transition-all ${
               tab === "builder" ? "text-white shadow-sm" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -303,6 +315,13 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setQrModalForm(f)}
+                            className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-1 rounded-lg flex items-center gap-1 shadow-xs"
+                            title="Generate and Share QR Code"
+                          >
+                            <span>📱</span> QR Code
+                          </button>
                           <button
                             onClick={() => handleCopyFormLink(f.id)}
                             className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-1"
@@ -585,20 +604,41 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
                   placeholder="Instructions for applicants..."
                 />
               </div>
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  onClick={() => handleSaveForm("Draft")}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
-                >
-                  Save Draft
-                </button>
-                <button
-                  onClick={() => handleSaveForm("Published")}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-xl text-white shadow-sm flex items-center gap-1.5"
-                  style={{ background: "var(--primary)" }}
-                >
-                  <span>🚀</span> Publish Form
-                </button>
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                {activeFormId !== "new-form" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentForm = forms.find(f => f.id === activeFormId) || {
+                        id: activeFormId,
+                        name: formName,
+                        description: formDesc,
+                        status: "Published",
+                        fields,
+                        createdAt: new Date().toISOString().split("T")[0],
+                      };
+                      setQrModalForm(currentForm as any);
+                    }}
+                    className="px-3 py-1.5 text-xs font-bold rounded-xl border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span>📱</span> Share QR Code
+                  </button>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    onClick={() => handleSaveForm("Draft")}
+                    className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  >
+                    Save Draft
+                  </button>
+                  <button
+                    onClick={() => handleSaveForm("Published")}
+                    className="px-4 py-1.5 text-xs font-semibold rounded-xl text-white shadow-sm flex items-center gap-1.5"
+                    style={{ background: "var(--primary)" }}
+                  >
+                    <span>🚀</span> Publish Form
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -769,6 +809,34 @@ export default function FormBuilder({ initialTab = "builder" }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {/* QR Code Viewer & Downloader Modal */}
+      {qrModalForm && (
+        <FormQRModal
+          formId={qrModalForm.id}
+          formName={qrModalForm.name}
+          formDesc={qrModalForm.description}
+          onClose={() => setQrModalForm(null)}
+        />
+      )}
+
+      {/* QR Code Scanner Camera Modal */}
+      {scannerOpen && (
+        <QRScannerModal
+          onClose={() => setScannerOpen(false)}
+          onSelectForm={(scannedId) => {
+            setScannerOpen(false);
+            const found = forms.find(f => f.id === scannedId);
+            if (found) {
+              handleEditForm(found);
+              showToast(`Loaded form: "${found.name}" from scanned QR code!`);
+            } else {
+              window.open(`${window.location.origin}${window.location.pathname}?formId=${scannedId}`, "_blank");
+              showToast(`Opening scanned form link...`);
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -88,6 +88,25 @@ export interface GalleryItem {
   date: string;
 }
 
+export interface FacilityItem {
+  id: string;
+  name: string;
+  desc: string;
+  iconKey?: string;
+  iconUrl?: string;
+  enabled: boolean;
+  category?: string;
+}
+
+export interface WhyChooseFeatureItem {
+  id: string;
+  title: string;
+  desc: string;
+  iconKey?: string;
+  iconUrl?: string;
+  enabled: boolean;
+}
+
 export interface SchoolInfo {
   name: string;
   tagline: string;
@@ -96,6 +115,7 @@ export interface SchoolInfo {
   board: string;
   principal: string;
   principalMessage: string;
+  principalImageUrl?: string;
   address: string;
   phone: string;
   email: string;
@@ -105,12 +125,22 @@ export interface SchoolInfo {
   heroImageUrl?: string;
   campusImageUrl?: string;
   aboutUsImageUrl?: string;
+  facilities?: FacilityItem[];
+  whyChooseFeatures?: WhyChooseFeatureItem[];
   socials: {
     facebook?: string;
     instagram?: string;
     youtube?: string;
     twitter?: string;
   };
+}
+
+export interface SavedExamPaper {
+  id: string;
+  title: string;
+  date: string;
+  paper: any;
+  createdAt?: string;
 }
 
 export interface QuestionItem {

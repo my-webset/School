@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { dataService } from "../../services/dataService";
 import LOGOS from "../../assets/logos";
 
@@ -6,7 +7,15 @@ interface Props {
 }
 
 export default function PublicFooter({ setCurrentPage }: Props) {
-  const school = dataService.getSchoolInfo();
+  const [school, setSchool] = useState(() => dataService.getSchoolInfo());
+
+  useEffect(() => {
+    setSchool(dataService.getSchoolInfo());
+    const unsub = dataService.subscribe(() => {
+      setSchool(dataService.getSchoolInfo());
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <footer className="bg-slate-900 text-slate-400 pt-16 pb-12">
@@ -15,7 +24,7 @@ export default function PublicFooter({ setCurrentPage }: Props) {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <img
-              src={LOGOS.schoolLogo}
+              src={school.logoUrl || LOGOS.schoolLogo}
               alt={school.name}
               className="w-12 h-12 object-contain p-1 rounded-xl bg-white/10"
             />

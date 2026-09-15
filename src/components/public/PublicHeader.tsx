@@ -58,7 +58,7 @@ export default function PublicHeader({ currentPage, setCurrentPage, setView }: P
           className="flex items-center gap-3.5 text-left group"
         >
           <img
-            src={LOGOS.schoolLogo}
+            src={school.logoUrl || LOGOS.schoolLogo}
             alt={school.name}
             className="w-11 h-11 object-contain p-0.5 rounded-xl border border-slate-100 bg-white shadow-xs group-hover:scale-105 transition-transform"
           />

@@ -6,10 +6,14 @@ import {
   EventItem, 
   GalleryItem, 
   SchoolInfo,
+  FacilityItem,
+  WhyChooseFeatureItem,
+  SavedExamPaper,
   InquiryItem,
   InquiryStatus
 } from "../types";
 import { supabase } from "../lib/supabase";
+import LOGOS from "../assets/logos";
 
 // Storage keys for offline-first caching & instant rendering
 const KEY_ADMISSIONS = "nis_admissions_data_v2";
@@ -21,6 +25,125 @@ const KEY_GALLERY = "nis_gallery_data_v2";
 const KEY_SCHOOL_INFO = "nis_school_info_v2";
 const KEY_INQUIRIES = "nis_inquiries_data_v2";
 const KEY_ADMIN_PASSWORD = "nis_admin_password_hash";
+const KEY_SAVED_PAPERS = "nis_saved_papers_v2";
+
+export const INITIAL_FACILITIES: FacilityItem[] = [
+  {
+    id: "fac-1",
+    name: "Advanced Science Labs",
+    desc: "Spacious Physics, Chemistry & Biology laboratories equipped with modern research apparatus.",
+    iconKey: "scienceLab",
+    iconUrl: LOGOS.scienceLab,
+    enabled: true,
+  },
+  {
+    id: "fac-2",
+    name: "Modern Digital Library",
+    desc: "Over 20,000 physical volumes, digital encyclopedias, and quiet research reading zones.",
+    iconKey: "library",
+    iconUrl: LOGOS.library,
+    enabled: true,
+  },
+  {
+    id: "fac-3",
+    name: "Grand Auditorium",
+    desc: "1,200-seat acoustically designed auditorium for theatre, conferences, and cultural celebrations.",
+    iconKey: "auditorium",
+    iconUrl: LOGOS.auditorium,
+    enabled: true,
+  },
+  {
+    id: "fac-4",
+    name: "Sports Complex & Track",
+    desc: "Cricket pitch, basketball courts, Olympic athletic tracks, and multi-purpose indoor arena.",
+    iconKey: "sportsComplex",
+    iconUrl: LOGOS.sportsComplex,
+    enabled: true,
+  },
+  {
+    id: "fac-5",
+    name: "Art & Music Conservatory",
+    desc: "Dedicated visual arts studios, classical & western music rooms, and contemporary dance halls.",
+    iconKey: "artAndMusic",
+    iconUrl: LOGOS.artAndMusic,
+    enabled: true,
+  },
+  {
+    id: "fac-6",
+    name: "Computer & AI Robotics Lab",
+    desc: "High-speed networked computing workstations with Python programming and robotics modules.",
+    iconKey: "techEnabledLearning",
+    iconUrl: LOGOS.techEnabledLearning,
+    enabled: true,
+  },
+  {
+    id: "fac-7",
+    name: "Air-Conditioned Smart Classrooms",
+    desc: "Ergonomic furniture, interactive digital smart boards, and climate-controlled learning environments.",
+    iconKey: "modernInfrastructure",
+    iconUrl: LOGOS.modernInfrastructure,
+    enabled: true,
+  },
+  {
+    id: "fac-8",
+    name: "Safe GPS Transport Fleet",
+    desc: "Air-conditioned school buses with live GPS tracking, speed governors, and trained female attendants.",
+    iconKey: "safeEnvironment",
+    iconUrl: LOGOS.safeEnvironment,
+    enabled: true,
+  },
+];
+
+export const INITIAL_WHY_CHOOSE_FEATURES: WhyChooseFeatureItem[] = [
+  {
+    id: "feat-1",
+    title: "Academic Excellence",
+    desc: "35+ years of delivering 100% CBSE board results with top district and national rank holders.",
+    iconKey: "academicExcellence",
+    iconUrl: LOGOS.academicExcellence,
+    enabled: true,
+  },
+  {
+    id: "feat-2",
+    title: "Holistic Development",
+    desc: "Balanced emphasis on academics, athletics, creative performing arts, and moral value orientation.",
+    iconKey: "holisticEnvironment",
+    iconUrl: LOGOS.holisticEnvironment,
+    enabled: true,
+  },
+  {
+    id: "feat-3",
+    title: "Experienced Faculty",
+    desc: "Dedicated master educators committed to nurturing curiosity, creativity, and foundational mastery.",
+    iconKey: "experiencedFaculty",
+    iconUrl: LOGOS.experiencedFaculty,
+    enabled: true,
+  },
+  {
+    id: "feat-4",
+    title: "Modern Infrastructure",
+    desc: "Air-conditioned smart classrooms, high-tech robotics labs, and extensive campus amenities.",
+    iconKey: "modernInfrastructure",
+    iconUrl: LOGOS.modernInfrastructure,
+    enabled: true,
+  },
+  {
+    id: "feat-5",
+    title: "Safe Environment",
+    desc: "Round-the-clock CCTV security, trained medical staff, and strict child protection protocols.",
+    iconKey: "safeEnvironment",
+    iconUrl: LOGOS.safeEnvironment,
+    enabled: true,
+  },
+  {
+    id: "feat-6",
+    title: "Tech-Enabled Learning",
+    desc: "Interactive smart boards, coding curriculum, STEM learning kits, and virtual resource portals.",
+    iconKey: "techEnabledLearning",
+    iconUrl: LOGOS.techEnabledLearning,
+    enabled: true,
+  },
+];
 
 // 1. Initial School Profile
 export const INITIAL_SCHOOL_INFO: SchoolInfo = {
@@ -31,11 +154,14 @@ export const INITIAL_SCHOOL_INFO: SchoolInfo = {
   board: "CBSE (Central Board of Secondary Education)",
   principal: "Dr. Priya Sharma",
   principalMessage: "Education is the most powerful weapon you can use to change the world. At Nalanda, we believe every child carries unique potential. Our dedicated faculty and world-class infrastructure create an environment where curiosity flourishes and character is built.",
+  principalImageUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop",
   address: "14, Vidya Vihar, Sector 21, Noida, Uttar Pradesh – 201301",
   phone: "+91 98765 43210",
   email: "admissions@nalandainternational.edu.in",
   website: "www.nalandainternational.edu.in",
   about: "Nalanda International School has been a beacon of academic excellence in Noida for over three decades. We nurture young minds with a holistic curriculum blending modern pedagogy with Indian values, preparing students for a globally competitive world.",
+  facilities: INITIAL_FACILITIES,
+  whyChooseFeatures: INITIAL_WHY_CHOOSE_FEATURES,
   socials: {
     facebook: "https://facebook.com/nalandainternational",
     instagram: "https://instagram.com/nalandainternational",
@@ -217,17 +343,58 @@ class DataService {
           board: row.board || INITIAL_SCHOOL_INFO.board,
           principal: row.principal || INITIAL_SCHOOL_INFO.principal,
           principalMessage: row.principal_message || INITIAL_SCHOOL_INFO.principalMessage,
+          principalImageUrl: row.principal_image_url || row.principalImageUrl || INITIAL_SCHOOL_INFO.principalImageUrl,
           address: row.address || INITIAL_SCHOOL_INFO.address,
           phone: row.phone || INITIAL_SCHOOL_INFO.phone,
           email: row.email || INITIAL_SCHOOL_INFO.email,
           website: row.website || INITIAL_SCHOOL_INFO.website,
           about: row.about || INITIAL_SCHOOL_INFO.about,
+          logoUrl: row.logo_url || row.logoUrl,
+          heroImageUrl: row.hero_image_url || row.heroImageUrl,
+          campusImageUrl: row.campus_image_url || row.campusImageUrl,
+          aboutUsImageUrl: row.about_us_image_url || row.aboutUsImageUrl,
+          facilities: typeof row.facilities === "string" ? JSON.parse(row.facilities) : (row.facilities || INITIAL_FACILITIES),
+          whyChooseFeatures: typeof row.why_choose_features === "string" ? JSON.parse(row.why_choose_features) : (row.why_choose_features || INITIAL_WHY_CHOOSE_FEATURES),
           socials: typeof row.socials === "string" ? JSON.parse(row.socials) : (row.socials || INITIAL_SCHOOL_INFO.socials),
         };
         localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(mappedSchool));
       }
 
-      // 9. Sync Site Settings & Master Password across all devices
+      // 9. Sync Saved AI Exam Papers Table across PC and Mobile
+      const papersRes = await supabase.select("saved_papers", "order=created_at.desc");
+      if (papersRes.data && Array.isArray(papersRes.data)) {
+        const mappedPapers: SavedExamPaper[] = papersRes.data.map((row: any) => {
+          let paperObj = null;
+          if (row.paper) {
+            paperObj = typeof row.paper === "string" ? JSON.parse(row.paper) : row.paper;
+          } else if (row.sections) {
+            paperObj = {
+              examTitle: row.exam_type || row.title,
+              session: "SESSION 2026-27",
+              subject: row.subject,
+              className: row.grade,
+              timeAllowed: row.duration || "3 Hours",
+              maximumMarks: row.total_marks || 80,
+              generalInstructions: Array.isArray(row.instructions) ? row.instructions : (typeof row.instructions === "string" ? JSON.parse(row.instructions || "[]") : []),
+              sections: Array.isArray(row.sections) ? row.sections : (typeof row.sections === "string" ? JSON.parse(row.sections || "[]") : []),
+              answerKey: row.answer_key || null,
+            };
+          }
+          return {
+            id: row.id,
+            title: row.title || `${row.subject} (${row.grade}) - ${row.exam_type}`,
+            date: row.created_at ? row.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+            paper: paperObj,
+            createdAt: row.created_at,
+          };
+        }).filter(p => p.paper && p.paper.sections);
+
+        if (mappedPapers.length > 0) {
+          localStorage.setItem(KEY_SAVED_PAPERS, JSON.stringify(mappedPapers));
+        }
+      }
+
+      // 10. Sync Site Settings & Master Password across all devices
       const settingsRes = await supabase.select("site_settings", "id=eq.1");
       if (settingsRes.data && Array.isArray(settingsRes.data) && settingsRes.data.length > 0) {
         const row = settingsRes.data[0];
@@ -812,7 +979,15 @@ class DataService {
   getSchoolInfo(): SchoolInfo {
     try {
       const raw = localStorage.getItem(KEY_SCHOOL_INFO);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          ...INITIAL_SCHOOL_INFO,
+          ...parsed,
+          facilities: parsed.facilities || INITIAL_FACILITIES,
+          whyChooseFeatures: parsed.whyChooseFeatures || INITIAL_WHY_CHOOSE_FEATURES,
+        };
+      }
     } catch (e) {
       console.error(e);
     }
@@ -831,13 +1006,79 @@ class DataService {
       board: info.board,
       principal: info.principal,
       principal_message: info.principalMessage,
+      principal_image_url: info.principalImageUrl,
       address: info.address,
       phone: info.phone,
       email: info.email,
       website: info.website,
       about: info.about,
+      logo_url: info.logoUrl,
+      hero_image_url: info.heroImageUrl,
+      campus_image_url: info.campusImageUrl,
+      about_us_image_url: info.aboutUsImageUrl,
+      facilities: info.facilities,
+      why_choose_features: info.whyChooseFeatures,
       socials: info.socials,
     }).catch(() => {});
+  }
+
+  // --- SAVED AI EXAM PAPERS (CROSS-DEVICE SYNC) ---
+  getSavedPapers(): SavedExamPaper[] {
+    try {
+      // Check new v2 key
+      const raw = localStorage.getItem(KEY_SAVED_PAPERS);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+      // Migrate legacy v1 key if present
+      const legacyRaw = localStorage.getItem("nis_saved_papers_v1");
+      if (legacyRaw) {
+        const parsed = JSON.parse(legacyRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localStorage.setItem(KEY_SAVED_PAPERS, JSON.stringify(parsed));
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return [];
+  }
+
+  savePaper(entry: SavedExamPaper) {
+    const current = this.getSavedPapers();
+    const updated = [entry, ...current.filter(p => p.id !== entry.id)];
+    localStorage.setItem(KEY_SAVED_PAPERS, JSON.stringify(updated));
+    this.notify();
+
+    // Sync to Supabase cloud
+    const p = entry.paper;
+    const payload: any = {
+      id: entry.id,
+      title: entry.title,
+      subject: p?.subject || "General",
+      grade: p?.className || "Class X",
+      exam_type: p?.examTitle || "Annual Examination",
+      total_marks: Number(p?.maximumMarks) || 80,
+      duration: p?.timeAllowed || "3 Hours",
+      instructions: p?.generalInstructions || [],
+      sections: p?.sections || [],
+      status: "Published",
+      created_at: entry.createdAt || new Date().toISOString(),
+    };
+
+    supabase.insert("saved_papers", payload).catch((err) => {
+      console.warn("[DataService] Cloud paper save fallback:", err);
+    });
+  }
+
+  deleteSavedPaper(id: string) {
+    const current = this.getSavedPapers();
+    const updated = current.filter(p => p.id !== id);
+    localStorage.setItem(KEY_SAVED_PAPERS, JSON.stringify(updated));
+    this.notify();
+
+    supabase.delete("saved_papers", `id=eq.${id}`).catch(() => {});
   }
 
   // --- DYNAMIC STATS ---

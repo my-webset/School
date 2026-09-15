@@ -1,4 +1,5 @@
-import { dataService } from "../../services/dataService";
+import { useState, useEffect } from "react";
+import { dataService, INITIAL_FACILITIES } from "../../services/dataService";
 import LOGOS from "../../assets/logos";
 
 interface Props {
@@ -6,40 +7,24 @@ interface Props {
 }
 
 export default function PublicFacilitiesPage({ setCurrentPage }: Props) {
-  const school = dataService.getSchoolInfo();
+  const [school, setSchool] = useState(() => dataService.getSchoolInfo());
 
-  const facilities = [
-    {
-      name: "Advanced Science Labs",
-      iconUrl: LOGOS.scienceLab,
-      desc: "Fully equipped Physics, Chemistry, and Biology laboratories maintaining rigorous safety protocols and modern experimental kits.",
-    },
-    {
-      name: "Digital Library & Reading Zone",
-      iconUrl: LOGOS.library,
-      desc: "Resource-rich library housing over 20,000 reference books, international journals, digital databases, and quiet study alcoves.",
-    },
-    {
-      name: "Grand Air-Conditioned Auditorium",
-      iconUrl: LOGOS.auditorium,
-      desc: "State-of-the-art 1,200 seater acoustic auditorium hosting annual theatre productions, debate competitions, and guest seminars.",
-    },
-    {
-      name: "Sports Complex & Track",
-      iconUrl: LOGOS.sportsComplex,
-      desc: "Extensive multi-sport complex featuring standard football grounds, cricket pitches, basketball courts, and athletics tracks.",
-    },
-    {
-      name: "Art & Music Conservatory",
-      iconUrl: LOGOS.artAndMusic,
-      desc: "Dedicated creative arts wing offering classical and western music instruction, pottery, fine painting, and theatre workshops.",
-    },
-    {
-      name: "Robotics & Computing Center",
-      iconUrl: LOGOS.techEnabledLearning,
-      desc: "High-speed internet computing labs with high-end workstations dedicated to computational thinking, AI, and robotics projects.",
-    },
-  ];
+  useEffect(() => {
+    setSchool(dataService.getSchoolInfo());
+    const unsub = dataService.subscribe(() => {
+      setSchool(dataService.getSchoolInfo());
+    });
+    return () => unsub();
+  }, []);
+
+  const facilities = (school.facilities && school.facilities.length > 0
+    ? school.facilities
+    : INITIAL_FACILITIES
+  ).filter(f => f.enabled !== false).map(f => ({
+    name: f.name,
+    iconUrl: f.iconUrl || (f.iconKey && (LOGOS as any)[f.iconKey]) || LOGOS.scienceLab,
+    desc: f.desc,
+  }));
 
   return (
     <div className="min-h-screen pb-20" style={{ background: "var(--background)" }}>

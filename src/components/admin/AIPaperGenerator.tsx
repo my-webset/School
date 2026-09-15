@@ -53,25 +53,15 @@ export default function AIPaperGenerator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [savedPapers, setSavedPapers] = useState<Array<{ id: string; title: string; date: string; paper: AIPaperResult }>>([]);
+  const [savedPapers, setSavedPapers] = useState<Array<{ id: string; title: string; date: string; paper: AIPaperResult }>>(() => dataService.getSavedPapers() as any);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_SAVED_PAPERS);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setSavedPapers(parsed);
-          return;
-        }
-      }
-      localStorage.setItem(STORAGE_SAVED_PAPERS, JSON.stringify([]));
-      setSavedPapers([]);
-    } catch (e) {
-      console.error(e);
-      setSavedPapers([]);
-    }
+    setSavedPapers(dataService.getSavedPapers() as any);
+    const unsub = dataService.subscribe(() => {
+      setSavedPapers(dataService.getSavedPapers() as any);
+    });
+    return () => unsub();
   }, []);
 
   const showToast = (msg: string) => {
@@ -238,16 +228,12 @@ export default function AIPaperGenerator() {
       date: new Date().toISOString().split("T")[0],
       paper,
     };
-    const updated = [newEntry, ...savedPapers];
-    setSavedPapers(updated);
-    localStorage.setItem(STORAGE_SAVED_PAPERS, JSON.stringify(updated));
-    showToast("Paper saved to your library!");
+    dataService.savePaper(newEntry as any);
+    showToast("Paper saved to your library & synced to cloud!");
   }
 
   function handleDeleteSaved(id: string) {
-    const updated = savedPapers.filter((p) => p.id !== id);
-    setSavedPapers(updated);
-    localStorage.setItem(STORAGE_SAVED_PAPERS, JSON.stringify(updated));
+    dataService.deleteSavedPaper(id);
     showToast("Saved paper deleted.");
   }
 
@@ -640,8 +626,9 @@ export default function AIPaperGenerator() {
                   <button
                     onClick={() => window.print()}
                     className="px-3 py-1 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 shadow-xs"
+                    title="Print or Save as PDF"
                   >
-                    🖨️ Print
+                    🖨️ Print / PDF
                   </button>
                   <button
                     onClick={handleDownloadWord}
@@ -707,7 +694,7 @@ export default function AIPaperGenerator() {
               {paper && !loading && (
                 <div className="space-y-4">
                   {/* School Header */}
-                  <div className="text-center pb-2 border-b-2 border-slate-900">
+                  <div className="text-center pb-2 border-b-2 border-slate-900 exam-header-block">
                     <div className="flex justify-center mb-1">
                       <img src={school.logoUrl || LOGOS.schoolLogo} alt="Logo" className="w-10 h-10 object-contain" />
                     </div>
@@ -722,17 +709,19 @@ export default function AIPaperGenerator() {
                   </div>
 
                   {/* Metadata Strip */}
-                  <div className="flex justify-between border-b border-t border-slate-900 py-1 text-xs font-bold font-sans">
-                    <span>SUBJECT: {paper.subject?.toUpperCase()}</span>
-                    <span>CLASS: {paper.className?.toUpperCase()}</span>
-                  </div>
-                  <div className="flex justify-between text-xs font-bold font-sans pb-1">
-                    <span>TIME ALLOWED: {paper.timeAllowed}</span>
-                    <span>MAXIMUM MARKS: {paper.maximumMarks}</span>
+                  <div className="exam-metadata-strip">
+                    <div className="flex justify-between border-b border-t border-slate-900 py-1 text-xs font-bold font-sans">
+                      <span>SUBJECT: {paper.subject?.toUpperCase()}</span>
+                      <span>CLASS: {paper.className?.toUpperCase()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold font-sans py-1">
+                      <span>TIME ALLOWED: {paper.timeAllowed}</span>
+                      <span>MAXIMUM MARKS: {paper.maximumMarks}</span>
+                    </div>
                   </div>
 
                   {/* Dynamic General Instructions */}
-                  <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-[11px] font-sans">
+                  <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-[11px] font-sans exam-instructions-block">
                     <div className="font-bold underline mb-0.5">GENERAL INSTRUCTIONS:</div>
                     <ol className="list-decimal pl-4 space-y-0.5 text-slate-700">
                       {paper.generalInstructions?.map((line, i) => (
@@ -742,10 +731,10 @@ export default function AIPaperGenerator() {
                   </div>
 
                   {/* Compact, Continuous Sections Flow */}
-                  <div className="space-y-3 pt-1">
+                  <div className="space-y-3 pt-1 exam-sections-wrapper">
                     {paper.sections?.map((section, si) => (
-                      <div key={si} className="space-y-2">
-                        <div className="text-center border-y border-slate-300 py-1 my-2 bg-slate-50/40">
+                      <div key={si} className="space-y-2 exam-section-block">
+                        <div className="text-center border-y border-slate-300 py-1 my-2 bg-slate-50/40 exam-section-header">
                           <p className="font-bold text-xs sm:text-sm tracking-wide">
                             {section.sectionLabel} {section.sectionTitle}
                           </p>
@@ -755,9 +744,9 @@ export default function AIPaperGenerator() {
                         </div>
 
                         {/* Sequential Questions */}
-                        <div className="space-y-2">
+                        <div className="space-y-2 exam-questions-list">
                           {section.questions?.map((q) => (
-                            <div key={q.number} className="text-xs leading-relaxed">
+                            <div key={q.number} className="text-xs leading-relaxed exam-question-item">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1">
                                   <span className="font-bold mr-1.5 font-mono">{q.number}.</span>

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { dataService } from "../../services/dataService";
-import { SchoolInfo } from "../../types";
+import { dataService, INITIAL_FACILITIES, INITIAL_WHY_CHOOSE_FEATURES } from "../../services/dataService";
+import { SchoolInfo, FacilityItem, WhyChooseFeatureItem } from "../../types";
 import LOGOS from "../../assets/logos";
 
 export default function SchoolInfoManager() {
-  const [info, setInfo] = useState<SchoolInfo>(dataService.getSchoolInfo());
+  const [info, setInfo] = useState<SchoolInfo>(() => dataService.getSchoolInfo());
   const [tab, setTab] = useState("general");
   const [toast, setToast] = useState("");
 
@@ -12,23 +12,31 @@ export default function SchoolInfoManager() {
   const heroInputRef = useRef<HTMLInputElement>(null);
   const campusInputRef = useRef<HTMLInputElement>(null);
   const aboutInputRef = useRef<HTMLInputElement>(null);
+  const principalInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setInfo(dataService.getSchoolInfo());
+    const unsub = dataService.subscribe(() => {
+      setInfo(dataService.getSchoolInfo());
+    });
+    return () => unsub();
   }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 2500);
+    setTimeout(() => setToast(""), 3000);
   };
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     dataService.saveSchoolInfo(info);
-    showToast("School Information and Branding saved & updated globally across the website!");
+    showToast("✅ School Information, Branding & Selected Features saved globally across the website!");
   };
 
-  const handleImageUpload = (file: File, key: "logoUrl" | "heroImageUrl" | "campusImageUrl" | "aboutUsImageUrl") => {
+  const handleImageUpload = (
+    file: File,
+    key: "logoUrl" | "heroImageUrl" | "campusImageUrl" | "aboutUsImageUrl" | "principalImageUrl"
+  ) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -56,12 +64,74 @@ export default function SchoolInfoManager() {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
           setInfo(prev => ({ ...prev, [key]: compressedDataUrl }));
-          showToast(`Image uploaded for ${key}! Click 'Save Changes' to apply everywhere.`);
+          showToast(`Image uploaded for ${key}! Click 'Save Changes' to publish everywhere.`);
         }
       };
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  // Facility Toggles & Handlers
+  const facilitiesList: FacilityItem[] = info.facilities && info.facilities.length > 0 
+    ? info.facilities 
+    : INITIAL_FACILITIES;
+
+  const toggleFacility = (id: string) => {
+    const updated = facilitiesList.map(f => (f.id === id ? { ...f, enabled: !f.enabled } : f));
+    setInfo(prev => ({ ...prev, facilities: updated }));
+  };
+
+  const updateFacilityField = (id: string, field: "name" | "desc", val: string) => {
+    const updated = facilitiesList.map(f => (f.id === id ? { ...f, [field]: val } : f));
+    setInfo(prev => ({ ...prev, facilities: updated }));
+  };
+
+  const addCustomFacility = () => {
+    const newFac: FacilityItem = {
+      id: `fac-${Date.now()}`,
+      name: "New School Facility",
+      desc: "Describe the specialized lab, sports arena, or modern campus facility.",
+      iconKey: "techEnabledLearning",
+      iconUrl: LOGOS.techEnabledLearning,
+      enabled: true,
+    };
+    setInfo(prev => ({ ...prev, facilities: [...facilitiesList, newFac] }));
+  };
+
+  const removeFacility = (id: string) => {
+    setInfo(prev => ({ ...prev, facilities: facilitiesList.filter(f => f.id !== id) }));
+  };
+
+  // Why Choose Us Toggles & Handlers
+  const whyChooseList: WhyChooseFeatureItem[] = info.whyChooseFeatures && info.whyChooseFeatures.length > 0
+    ? info.whyChooseFeatures
+    : INITIAL_WHY_CHOOSE_FEATURES;
+
+  const toggleWhyChoose = (id: string) => {
+    const updated = whyChooseList.map(f => (f.id === id ? { ...f, enabled: !f.enabled } : f));
+    setInfo(prev => ({ ...prev, whyChooseFeatures: updated }));
+  };
+
+  const updateWhyChooseField = (id: string, field: "title" | "desc", val: string) => {
+    const updated = whyChooseList.map(f => (f.id === id ? { ...f, [field]: val } : f));
+    setInfo(prev => ({ ...prev, whyChooseFeatures: updated }));
+  };
+
+  const addCustomWhyChoose = () => {
+    const newFeat: WhyChooseFeatureItem = {
+      id: `feat-${Date.now()}`,
+      title: "Distinctive School Feature",
+      desc: "Highlight key achievements, curriculum excellence, or unique student benefits.",
+      iconKey: "academicExcellence",
+      iconUrl: LOGOS.academicExcellence,
+      enabled: true,
+    };
+    setInfo(prev => ({ ...prev, whyChooseFeatures: [...whyChooseList, newFeat] }));
+  };
+
+  const removeWhyChoose = (id: string) => {
+    setInfo(prev => ({ ...prev, whyChooseFeatures: whyChooseList.filter(f => f.id !== id) }));
   };
 
   return (
@@ -80,7 +150,7 @@ export default function SchoolInfoManager() {
             School Profile & Branding System
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Update official school details, logo, hero banner, campus photos, and social links displayed globally site-wide.
+            Update official school details, branding logos, campus photos, facility checklist, and "Why Choose Us" features.
           </p>
         </div>
         <button
@@ -94,10 +164,12 @@ export default function SchoolInfoManager() {
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sub-tabs */}
-        <div className="lg:w-60 flex-shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm p-2 space-y-1 h-fit">
+        <div className="lg:w-64 flex-shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm p-2 space-y-1 h-fit">
           {[
             { id: "general", label: "General & Affiliation", icon: "🏫" },
             { id: "branding", label: "Branding & Images", icon: "🎨" },
+            { id: "facilities", label: "Facilities Checklist", icon: "🔬" },
+            { id: "whyChoose", label: "Why Choose Us Boxes", icon: "⭐" },
             { id: "principal", label: "Principal's Desk", icon: "👩‍💼" },
             { id: "contact", label: "Contact & Address", icon: "📍" },
             { id: "socials", label: "Social Media Links", icon: "🌐" },
@@ -356,9 +428,236 @@ export default function SchoolInfoManager() {
               </div>
             )}
 
-            {/* 3. Principal's Desk */}
+            {/* 3. Facilities Checklist (TICK TO SHOW / HIDE) */}
+            {tab === "facilities" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-amber-50/80 border border-amber-200 rounded-2xl">
+                  <div>
+                    <div className="font-bold text-slate-800 text-xs">School Facilities Selection Engine</div>
+                    <div className="text-[11px] text-slate-600 mt-0.5">
+                      Tick <strong>[✓]</strong> the facilities available at your school. Only checked facilities will be displayed on the Home Page and Facilities Page.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCustomFacility}
+                    className="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-xs hover:bg-amber-700 transition-colors whitespace-nowrap shadow-xs"
+                  >
+                    + Add Facility
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  {facilitiesList.map(fac => {
+                    const iconSrc = fac.iconUrl || (fac.iconKey && (LOGOS as any)[fac.iconKey]) || LOGOS.scienceLab;
+                    return (
+                      <div
+                        key={fac.id}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          fac.enabled
+                            ? "bg-white border-blue-200 shadow-xs"
+                            : "bg-slate-50 border-slate-200 opacity-60"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <label className="flex items-start gap-3 cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={fac.enabled}
+                              onChange={() => toggleFacility(fac.id)}
+                              className="w-4 h-4 mt-1 rounded text-blue-900 focus:ring-blue-800 cursor-pointer accent-blue-900"
+                            />
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 p-1.5 flex items-center justify-center flex-shrink-0">
+                              <img src={iconSrc} alt={fac.name} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-bold text-xs ${fac.enabled ? "text-slate-900" : "text-slate-500"}`}>
+                                  {fac.name}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                  fac.enabled ? "bg-green-100 text-green-800" : "bg-slate-200 text-slate-600"
+                                }`}>
+                                  {fac.enabled ? "Active on Website" : "Hidden"}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-600 leading-relaxed">{fac.desc}</p>
+                            </div>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => removeFacility(fac.id)}
+                            className="text-slate-400 hover:text-red-600 text-xs px-2 py-1"
+                            title="Remove this facility"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* Inline quick editor if enabled */}
+                        {fac.enabled && (
+                          <div className="mt-3 pt-3 border-t border-slate-100 grid sm:grid-cols-2 gap-2 text-[11px]">
+                            <div>
+                              <span className="text-slate-500 font-semibold block mb-0.5">Facility Name:</span>
+                              <input
+                                value={fac.name}
+                                onChange={e => updateFacilityField(fac.id, "name", e.target.value)}
+                                className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none bg-white text-xs"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-slate-500 font-semibold block mb-0.5">Short Description:</span>
+                              <input
+                                value={fac.desc}
+                                onChange={e => updateFacilityField(fac.id, "desc", e.target.value)}
+                                className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none bg-white text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 4. Why Choose Us Boxes (TICK TO SHOW / HIDE) */}
+            {tab === "whyChoose" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-50/80 border border-blue-200 rounded-2xl">
+                  <div>
+                    <div className="font-bold text-slate-800 text-xs">"Why Choose Us" Distinctive Features Selection</div>
+                    <div className="text-[11px] text-slate-600 mt-0.5">
+                      Tick <strong>[✓]</strong> the feature boxes you want to display on the Home Page section. Unticked features will not be shown.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCustomWhyChoose}
+                    className="px-3 py-1.5 rounded-xl bg-blue-900 text-white font-bold text-xs hover:bg-blue-800 transition-colors whitespace-nowrap shadow-xs"
+                  >
+                    + Add Feature
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  {whyChooseList.map(feat => {
+                    const iconSrc = feat.iconUrl || (feat.iconKey && (LOGOS as any)[feat.iconKey]) || LOGOS.academicExcellence;
+                    return (
+                      <div
+                        key={feat.id}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          feat.enabled
+                            ? "bg-white border-blue-200 shadow-xs"
+                            : "bg-slate-50 border-slate-200 opacity-60"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <label className="flex items-start gap-3 cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={feat.enabled}
+                              onChange={() => toggleWhyChoose(feat.id)}
+                              className="w-4 h-4 mt-1 rounded text-blue-900 focus:ring-blue-800 cursor-pointer accent-blue-900"
+                            />
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 p-1.5 flex items-center justify-center flex-shrink-0">
+                              <img src={iconSrc} alt={feat.title} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-bold text-xs ${feat.enabled ? "text-slate-900" : "text-slate-500"}`}>
+                                  {feat.title}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                  feat.enabled ? "bg-green-100 text-green-800" : "bg-slate-200 text-slate-600"
+                                }`}>
+                                  {feat.enabled ? "Active on Home Page" : "Hidden"}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-600 leading-relaxed">{feat.desc}</p>
+                            </div>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => removeWhyChoose(feat.id)}
+                            className="text-slate-400 hover:text-red-600 text-xs px-2 py-1"
+                            title="Remove this feature"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* Inline quick editor if enabled */}
+                        {feat.enabled && (
+                          <div className="mt-3 pt-3 border-t border-slate-100 grid sm:grid-cols-2 gap-2 text-[11px]">
+                            <div>
+                              <span className="text-slate-500 font-semibold block mb-0.5">Feature Title:</span>
+                              <input
+                                value={feat.title}
+                                onChange={e => updateWhyChooseField(feat.id, "title", e.target.value)}
+                                className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none bg-white text-xs"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-slate-500 font-semibold block mb-0.5">Description:</span>
+                              <input
+                                value={feat.desc}
+                                onChange={e => updateWhyChooseField(feat.id, "desc", e.target.value)}
+                                className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none bg-white text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 5. Principal's Desk */}
             {tab === "principal" && (
               <div className="space-y-4">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-800 text-xs">Principal's Official Portrait Photo</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Displayed in Principal's Desk section on Home and About pages</div>
+                    </div>
+                    <img
+                      src={info.principalImageUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop"}
+                      alt={info.principal}
+                      className="w-12 h-12 rounded-full object-cover border-2 border-blue-900 shadow-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter photo URL (https://...)"
+                      value={info.principalImageUrl || ""}
+                      onChange={e => setInfo(prev => ({ ...prev, principalImageUrl: e.target.value }))}
+                      className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => principalInputRef.current?.click()}
+                      className="px-3.5 py-2 bg-slate-800 text-white font-semibold rounded-xl text-xs hover:bg-black transition-colors"
+                    >
+                      📁 Upload Photo
+                    </button>
+                    <input
+                      ref={principalInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], "principalImageUrl")}
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">Principal / Head of Institution Name</label>
                   <input
@@ -381,7 +680,7 @@ export default function SchoolInfoManager() {
               </div>
             )}
 
-            {/* 4. Contact & Address */}
+            {/* 6. Contact & Address */}
             {tab === "contact" && (
               <div className="space-y-4">
                 <div>
@@ -426,7 +725,7 @@ export default function SchoolInfoManager() {
               </div>
             )}
 
-            {/* 5. Socials */}
+            {/* 7. Socials */}
             {tab === "socials" && (
               <div className="space-y-4">
                 <div>
@@ -464,7 +763,7 @@ export default function SchoolInfoManager() {
             <div className="pt-4 border-t border-slate-100 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl font-bold text-white shadow-sm"
+                className="px-6 py-2.5 rounded-xl font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
                 style={{ background: "var(--primary)" }}
               >
                 Save Changes Globally

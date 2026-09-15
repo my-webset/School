@@ -17,71 +17,23 @@ export default function HomePage({ setCurrentPage }: Props) {
     });
   }, []);
 
-  const features = [
-    {
-      title: "Academic Excellence",
-      iconUrl: LOGOS.academicExcellence,
-      desc: "Comprehensive CBSE curriculum paired with personalized academic mentoring and digital classrooms.",
-    },
-    {
-      title: "Holistic Environment",
-      iconUrl: LOGOS.holisticEnvironment,
-      desc: "Balancing intellectual rigor with emotional quotient, sportsmanship, and ethical leadership.",
-    },
-    {
-      title: "Experienced Faculty",
-      iconUrl: LOGOS.experiencedFaculty,
-      desc: "Dedicated master educators committed to nurturing curiosity, creativity, and foundational mastery.",
-    },
-    {
-      title: "Modern Infrastructure",
-      iconUrl: LOGOS.modernInfrastructure,
-      desc: "Air-conditioned smart classrooms, high-tech robotics labs, and extensive campus amenities.",
-    },
-    {
-      title: "Safe Environment",
-      iconUrl: LOGOS.safeEnvironment,
-      desc: "Round-the-clock CCTV security, trained medical staff, and strict child protection protocols.",
-    },
-    {
-      title: "Tech-Enabled Learning",
-      iconUrl: LOGOS.techEnabledLearning,
-      desc: "Interactive smart boards, coding curriculum, STEM learning kits, and virtual resource portals.",
-    },
-  ];
+  const features = (school.whyChooseFeatures && school.whyChooseFeatures.length > 0
+    ? school.whyChooseFeatures
+    : INITIAL_WHY_CHOOSE_FEATURES
+  ).filter(f => f.enabled !== false).map(f => ({
+    title: f.title,
+    iconUrl: f.iconUrl || (f.iconKey && (LOGOS as any)[f.iconKey]) || LOGOS.academicExcellence,
+    desc: f.desc,
+  }));
 
-  const facilities = [
-    {
-      name: "Advanced Science Labs",
-      iconUrl: LOGOS.scienceLab,
-      desc: "Spacious Physics, Chemistry & Biology laboratories equipped with modern apparatus.",
-    },
-    {
-      name: "Modern Digital Library",
-      iconUrl: LOGOS.library,
-      desc: "Over 20,000 physical volumes, digital encyclopedias, and quiet reading research zones.",
-    },
-    {
-      name: "Grand Auditorium",
-      iconUrl: LOGOS.auditorium,
-      desc: "1,200-seat acoustically designed auditorium for theatre, conferences, and cultural fests.",
-    },
-    {
-      name: "Sports Complex & Track",
-      iconUrl: LOGOS.sportsComplex,
-      desc: "Cricket pitch, basketball courts, Olympic athletic tracks, and indoor sports arena.",
-    },
-    {
-      name: "Art & Music Conservatory",
-      iconUrl: LOGOS.artAndMusic,
-      desc: "Dedicated visual arts studios, classical & western music rooms, and dance halls.",
-    },
-    {
-      name: "Computer & AI Lab",
-      iconUrl: LOGOS.techEnabledLearning,
-      desc: "High-speed networked computing lab with Python programming and robotics modules.",
-    },
-  ];
+  const facilities = (school.facilities && school.facilities.length > 0
+    ? school.facilities
+    : INITIAL_FACILITIES
+  ).filter(f => f.enabled !== false).map(f => ({
+    name: f.name,
+    iconUrl: f.iconUrl || (f.iconKey && (LOGOS as any)[f.iconKey]) || LOGOS.scienceLab,
+    desc: f.desc,
+  }));
 
   const academicPrograms = [
     { name: "Pre-Primary Foundation", classes: "Nursery – UKG", desc: "Montessori-inspired experiential play learning, language immersion, and motor skills development." },
@@ -212,7 +164,7 @@ export default function HomePage({ setCurrentPage }: Props) {
             <div className="lg:col-span-4 text-center">
               <div className="w-36 h-36 rounded-full mx-auto p-1 bg-gradient-to-tr from-blue-900 to-amber-400 mb-4 shadow-md">
                 <img
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop"
+                  src={school.principalImageUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop"}
                   alt={school.principal}
                   className="w-full h-full object-cover rounded-full"
                 />

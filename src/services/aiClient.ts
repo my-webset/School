@@ -5,20 +5,15 @@ const env = (import.meta as any).env ?? {};
 
 const AUTHORIZED_AI_MODEL = "openai/gpt-4o-mini";
 
-const normalizeAuthorizedModel = (value?: string): string => {
-  const raw = (value || AUTHORIZED_AI_MODEL).trim();
-  if (raw === "gpt-4o-mini" || raw === AUTHORIZED_AI_MODEL) {
-    return raw;
-  }
-
-  console.warn(`[aiClient] Invalid model "${raw}" detected. Falling back to authorized model "${AUTHORIZED_AI_MODEL}".`);
+const normalizeAuthorizedModel = (_value?: string): string => {
+  // Strictly lock model to gpt-4o-mini only; remove any other model parameters.
   return AUTHORIZED_AI_MODEL;
 };
 
 export const AICREDITS_CONFIG = {
   baseUrl: env.VITE_AICREDITS_BASE_URL || "https://aicredits.in/v1",
   apiKey: env.VITE_AICREDITS_API_KEY || "",
-  model: normalizeAuthorizedModel(env.VITE_AICREDITS_MODEL),
+  model: AUTHORIZED_AI_MODEL,
 };
 
 export interface PaperQuestion {
@@ -64,52 +59,57 @@ USER SPECIFIED EXACT QUESTION COUNTS:
 - Case-Based / Competency Questions (5 Marks): ${blueprint.counts.case ?? "auto"}
 ` : "";
 
-  return `You are an advanced CBSE Question Paper Generator engine. Follow ALL instructions strictly.
+  return `System Instruction: Strict Source-Grounded Response Generator
+
+You are an AI assistant and CBSE Question Paper Generator engine that must generate all output strictly based on the material provided by the user (text, input images, PDFs, documents, syllabus, and blueprint). Follow these rules strictly for paper generation:
 
 ================================================================================
-CORE OPERATING RULES (STRICT COMPLIANCE REQUIRED):
+STRICT SOURCE-GROUNDED OPERATING RULES:
 ================================================================================
 
-1. OUTPUT FORMAT:
+1. SOURCE-ONLY CONTENT:
+   - Use ONLY the information present in the user-provided material (input images, attached documents, syllabus text, and blueprint topics).
+   - Do NOT add facts, examples, definitions, or explanations from your own training knowledge, even if commonly known or "technically correct", unless explicitly asked to supplement with outside knowledge.
+   - When images (textbook pages, question sheets, syllabus scans) are attached, ground questions directly and solely in the visual/textual content of those images.
+
+2. NO SCOPE CREEP:
+   - Stay within the exact topics, chapters, or sections covered in the source. If the source covers only topic A and B, do NOT generate content or questions about topic C, even if related or commonly taught alongside A and B.
+
+3. TRACEABILITY:
+   - Before including any question, fact, answer, or claim, internally verify it can be traced to a specific part of the source material or provided images. If it cannot be pointed to where it came from, exclude it.
+
+4. NO UNVERIFIED ASSUMPTIONS OR SIMPLIFICATIONS:
+   - If the source doesn't explicitly state a fact (formula, number, definition, conclusion), do NOT fill in gaps from general training knowledge.
+
+5. SINGLE, UNAMBIGUOUS CORRECTNESS:
+   - For anything with a "correct answer" (MCQs, fill-in-blanks, true/false, matching, short answers), ensure only ONE option is valid based strictly on the source.
+   - Reject or revise anything where two answers could reasonably be argued as correct.
+   - MCQs must have exactly 4 plausible options with one clear correct option and a matching answer key.
+
+6. DEPTH MATCHING:
+   - Match the complexity and depth of the generated questions to the depth of the source material. Do not generate advanced-level content from basic source material, and do not oversimplify advanced sources.
+
+7. EXPLICIT GAP REPORTING & CAPACITY:
+   - Stay fully within the verifiable capacity of the provided source materials.
+
+8. MULTI-SOURCE INDEPENDENCE:
+   - When multiple sources/images are given, treat each source independently first, verify content against its own source, and only combine when explicitly required.
+
+9. STRICT JSON OUTPUT FORMAT:
    - Output ONE valid raw JSON object and NOTHING else. No markdown fences, no backticks, no conversational preamble or sign-off.
    - The first character must be "{" and the last character must be "}".
 
-2. MARK CALCULATION ENGINE:
-   - TOTAL MARKS = sum of marks across every single question in all sections.
-   - TOTAL MARKS MUST EQUAL ${blueprint.totalMarks || 80} EXACTLY.
-   - Never output a paper where the calculated mark sum does not equal ${blueprint.totalMarks || 80}.
-
-3. USER-CONTROLLED QUESTION QUANTITIES & SECTIONS:
-   - Respect user-defined question quantities strictly:
+10. MARK CALCULATION & CONTINUOUS SEQUENTIAL NUMBERING:
+    - TOTAL MARKS = sum of marks across every single question in all sections. Must equal ${blueprint.totalMarks || 80} EXACTLY.
+    - Question numbering must ALWAYS be continuous: 1, 2, 3, 4, 5... from start to end without missing numbers or resets.
+    - Respect user-defined question quantities strictly:
 ${countsInfo}
-   - Do NOT add unauthorized questions. If user requested 10 MCQs, create exactly 10 MCQs.
 
-4. USER-CONTROLLED SECTION ORDER & SEQUENCING:
-   - Questions within each section MUST follow the exact sequential order requested (e.g. all MCQs first, followed by all Fill in the Blanks, followed by True/False, followed by Short Answers, etc.).
-   - NEVER randomly mix question formats.
+11. COMPACT CONTINUOUS LAYOUT (ZERO UNNECESSARY GAPS):
+    - Format questions efficiently to fit the target ${targetPages}-page length budget (${targetQCount}).
 
-5. CONTINUOUS SEQUENTIAL NUMBERING:
-   - Question numbering must ALWAYS be continuous: 1, 2, 3, 4, 5... from start to end without missing numbers or resets.
-
-6. ZERO REPETITION (EXTREMELY STRICT):
-   - Every question must test a distinct concept or skill.
-   - No duplicate or near-duplicate questions.
-   - No repeated MCQ options/questions. Ensure 4 plausible distractors with balanced correct options (A, B, C, D).
-
-7. SOURCE ACCURACY & NO FICTIONAL TERMINOLOGY:
-   - Use ONLY authentic concepts that genuinely belong to "${blueprint.subject || "Subject"}" and topics: ${blueprint.chapters || "syllabus"}.
-   - NEVER invent fictional mathematical theorems, SI units, reaction kinetics, or formulas unless the subject is genuinely Science/Math.
-
-8. COMPACT CONTINUOUS LAYOUT (ZERO UNNECESSARY GAPS):
-   - Sections flow naturally in continuous sequence. No huge blank spaces or awkward gaps.
-   - Format questions efficiently to fit the target ${targetPages}-page length budget (${targetQCount}).
-
-9. DYNAMIC GENERAL INSTRUCTIONS:
-   - Instructions must automatically reflect the actual sections, question types, and rules of this specific paper.
-   - If no diagrams/calculators/internal choices exist, do not claim they do.
-
-10. FINAL AUTOMATED PREFLIGHT CHECK:
-    - Before outputting, verify that: (a) Marks equal ${blueprint.totalMarks || 80}, (b) Numbering is continuous 1..N, (c) 100% unique questions, (d) Sequential ordering is preserved, (e) Answer key matches questions.
+12. SELF-CHECK BEFORE FINAL OUTPUT:
+    - Run an internal verification pass before outputting: confirm every question, option, and answer key maps back to the source and matches total marks ${blueprint.totalMarks || 80}.
 
 Return JSON in EXACTLY this shape:
 {
