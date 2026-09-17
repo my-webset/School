@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { dataService } from "../../services/dataService";
+import {
+  dataService,
+  INITIAL_FACILITIES,
+  INITIAL_WHY_CHOOSE_FEATURES,
+} from "../../services/dataService";
 import LOGOS from "../../assets/logos";
 
 interface Props {

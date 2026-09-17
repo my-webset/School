@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AdminSidebar from "./AdminSidebar";
 import DashboardHome from "./DashboardHome";
 import AdmissionsManager from "./AdmissionsManager";

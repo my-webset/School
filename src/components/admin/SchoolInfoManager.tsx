@@ -104,6 +104,11 @@ export default function SchoolInfoManager() {
         return;
       }
 
+      const uploadRes = await supabase.uploadFile(
+        "school-assets",
+        `${key}-${Date.now()}.jpg`,
+        compressedBlob,
+      );
       let finalUrl = "";
       if (uploadRes.publicUrl && !uploadRes.error) {
         finalUrl = uploadRes.publicUrl;
