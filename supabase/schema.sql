@@ -281,3 +281,15 @@ CREATE POLICY "Admin full access saved_papers" ON public.saved_papers FOR ALL US
 CREATE POLICY "Admin full access site_settings" ON public.site_settings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Admin full access inquiries" ON public.inquiries FOR ALL USING (true) WITH CHECK (true);
 
+-- ==============================================================================
+-- 11. SUPABASE STORAGE BUCKET FOR SCHOOL BRANDING & IMAGES
+-- ==============================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('school-assets', 'school-assets', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+CREATE POLICY "Public Read Access to school-assets" ON storage.objects FOR SELECT USING (bucket_id = 'school-assets');
+CREATE POLICY "Public Upload to school-assets" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'school-assets');
+CREATE POLICY "Public Update to school-assets" ON storage.objects FOR UPDATE USING (bucket_id = 'school-assets') WITH CHECK (bucket_id = 'school-assets');
+
+

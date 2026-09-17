@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { dataService, INITIAL_FACILITIES, INITIAL_WHY_CHOOSE_FEATURES } from "../../services/dataService";
 import { SchoolInfo, FacilityItem, WhyChooseFeatureItem } from "../../types";
+import { supabase } from "../../lib/supabase";
 import LOGOS from "../../assets/logos";
 
 export default function SchoolInfoManager() {
   const [info, setInfo] = useState<SchoolInfo>(() => dataService.getSchoolInfo());
   const [tab, setTab] = useState("general");
   const [toast, setToast] = useState("");
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const heroInputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +45,7 @@ export default function SchoolInfoManager() {
     try {
       await dataService.saveSchoolInfo(info);
       isDirtyRef.current = false;
-      showToast("✅ School Information, Branding & Selected Features saved globally across the website!");
+      showToast("✅ School Information, Branding & Images synced globally to all devices!");
     } catch (err: any) {
       showToast("⚠️ Notice: Saved locally. " + (err?.message || ""));
     } finally {
@@ -51,44 +53,83 @@ export default function SchoolInfoManager() {
     }
   };
 
-  const handleImageUpload = (
+  const handleImageUpload = async (
     file: File,
     key: "logoUrl" | "heroImageUrl" | "campusImageUrl" | "aboutUsImageUrl" | "principalImageUrl"
   ) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-        const maxDimension = key === "logoUrl" ? 500 : 1600;
+    setUploadingImage(key);
+    showToast(`Optimizing and uploading image for ${key}...`);
 
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
+    try {
+      const maxDimension = key === "logoUrl" ? 400 : 1000;
+      const quality = key === "logoUrl" ? 0.85 : 0.75;
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-          updateInfo(prev => ({ ...prev, [key]: compressedDataUrl }));
-          showToast(`Image uploaded for ${key}! Click 'Save & Publish Globally' to apply.`);
-        }
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+      const compressedBlob = await new Promise<Blob | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              } else {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              canvas.toBlob((blob) => resolve(blob), "image/jpeg", quality);
+            } else {
+              resolve(null);
+            }
+          };
+          img.src = reader.result as string;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      if (!compressedBlob) {
+        showToast("⚠️ Could not process image.");
+        return;
+      }
+
+      // 1. Try uploading to Supabase Storage bucket for a true global CDN URL
+      const ext = file.name.split(".").pop() || "jpg";
+      const fileName = `${key}-${Date.now()}.${ext}`;
+      const uploadRes = await supabase.uploadFile("school-assets", fileName, compressedBlob);
+
+      if (uploadRes.publicUrl && !uploadRes.error) {
+        updateInfo(prev => ({ ...prev, [key]: uploadRes.publicUrl! }));
+        showToast(`✅ Cloud image ready! Click 'Save & Publish Globally' to sync to mobile.`);
+      } else {
+        // Fallback: Convert to compact base64 data URL
+        const reader = new FileReader();
+        reader.onload = () => {
+          const compactDataUrl = reader.result as string;
+          updateInfo(prev => ({ ...prev, [key]: compactDataUrl }));
+          showToast(`Image processed! Click 'Save & Publish Globally' to sync everywhere.`);
+        };
+        reader.readAsDataURL(compressedBlob);
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast("⚠️ Image upload notice: " + (err?.message || ""));
+    } finally {
+      setUploadingImage(null);
+    }
   };
+
 
   // Facility Toggles & Handlers
   const facilitiesList: FacilityItem[] = info.facilities && info.facilities.length > 0 

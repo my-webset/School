@@ -1040,6 +1040,71 @@ class DataService {
 
   private async pushSchoolInfoToSupabase(info: SchoolInfo): Promise<{ success: boolean; error?: string }> {
     try {
+      // Helper to convert base64 data URL to Blob for cloud storage
+      const dataUrlToBlob = (dataUrl: string): Blob | null => {
+        try {
+          const arr = dataUrl.split(",");
+          const mime = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg";
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          return new Blob([u8arr], { type: mime });
+        } catch (_) {
+          return null;
+        }
+      };
+
+      // If any image is in base64 data URL format, upload it to Supabase Storage to get a public URL
+      let logoUrl = info.logoUrl || "";
+      let heroImageUrl = info.heroImageUrl || "";
+      let campusImageUrl = info.campusImageUrl || "";
+      let aboutUsImageUrl = info.aboutUsImageUrl || "";
+      let principalImageUrl = info.principalImageUrl || "";
+
+      const uploadIfBase64 = async (val: string, keyName: string): Promise<string> => {
+        if (val && val.startsWith("data:image/")) {
+          const blob = dataUrlToBlob(val);
+          if (blob) {
+            const fileName = `${keyName}-${Date.now()}.jpg`;
+            const res = await supabase.uploadFile("school-assets", fileName, blob);
+            if (res.publicUrl && !res.error) {
+              return res.publicUrl;
+            }
+          }
+        }
+        return val;
+      };
+
+      logoUrl = await uploadIfBase64(logoUrl, "logo");
+      heroImageUrl = await uploadIfBase64(heroImageUrl, "hero");
+      campusImageUrl = await uploadIfBase64(campusImageUrl, "campus");
+      aboutUsImageUrl = await uploadIfBase64(aboutUsImageUrl, "about");
+      principalImageUrl = await uploadIfBase64(principalImageUrl, "principal");
+
+      // Update local storage if any URLs were converted from base64 to cloud URLs
+      if (
+        logoUrl !== info.logoUrl ||
+        heroImageUrl !== info.heroImageUrl ||
+        campusImageUrl !== info.campusImageUrl ||
+        aboutUsImageUrl !== info.aboutUsImageUrl ||
+        principalImageUrl !== info.principalImageUrl
+      ) {
+        const updatedLocal: SchoolInfo = {
+          ...info,
+          logoUrl,
+          heroImageUrl,
+          campusImageUrl,
+          aboutUsImageUrl,
+          principalImageUrl,
+        };
+        try {
+          localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(updatedLocal));
+        } catch (_) {}
+      }
+
       const payload: any = {
         id: 1,
         name: info.name || INITIAL_SCHOOL_INFO.name,
@@ -1049,16 +1114,16 @@ class DataService {
         board: info.board || "",
         principal: info.principal || "",
         principal_message: info.principalMessage || "",
-        principal_image_url: info.principalImageUrl || "",
+        principal_image_url: principalImageUrl,
         address: info.address || "",
         phone: info.phone || "",
         email: info.email || "",
         website: info.website || "",
         about: info.about || "",
-        logo_url: info.logoUrl || "",
-        hero_image_url: info.heroImageUrl || "",
-        campus_image_url: info.campusImageUrl || "",
-        about_us_image_url: info.aboutUsImageUrl || "",
+        logo_url: logoUrl,
+        hero_image_url: heroImageUrl,
+        campus_image_url: campusImageUrl,
+        about_us_image_url: aboutUsImageUrl,
         facilities: info.facilities || [],
         why_choose_features: info.whyChooseFeatures || [],
         socials: info.socials || {},

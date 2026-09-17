@@ -113,6 +113,37 @@ export class SupabaseClient {
       return { success: false, error: error?.message || "Delete failed" };
     }
   }
+
+  async uploadFile(bucket: string, path: string, file: Blob | File): Promise<{ publicUrl: string | null; error: any }> {
+    try {
+      const url = `${this.getUrl()}/storage/v1/object/${bucket}/${path}`;
+      const config = getStoredConfig();
+      const key = config.supabaseAnonKey || "";
+      const headers: Record<string, string> = {
+        "apikey": key,
+        "Authorization": `Bearer ${key}`,
+        "Content-Type": file.type || "image/jpeg",
+        "x-upsert": "true",
+      };
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: file,
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        return { publicUrl: null, error: `Upload error ${response.status}: ${errText}` };
+      }
+
+      const publicUrl = `${this.getUrl()}/storage/v1/object/public/${bucket}/${path}`;
+      return { publicUrl, error: null };
+    } catch (e: any) {
+      return { publicUrl: null, error: e?.message || "Storage upload failed" };
+    }
+  }
 }
 
 export const supabase = new SupabaseClient();
+
