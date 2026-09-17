@@ -133,6 +133,7 @@ export interface SchoolInfo {
     youtube?: string;
     twitter?: string;
   };
+  _updatedAt?: number;
 }
 
 export interface SavedExamPaper {

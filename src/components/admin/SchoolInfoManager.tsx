@@ -14,10 +14,15 @@ export default function SchoolInfoManager() {
   const aboutInputRef = useRef<HTMLInputElement>(null);
   const principalInputRef = useRef<HTMLInputElement>(null);
 
+  const [saving, setSaving] = useState(false);
+  const isDirtyRef = useRef(false);
+
   useEffect(() => {
     setInfo(dataService.getSchoolInfo());
     const unsub = dataService.subscribe(() => {
-      setInfo(dataService.getSchoolInfo());
+      if (!isDirtyRef.current) {
+        setInfo(dataService.getSchoolInfo());
+      }
     });
     return () => unsub();
   }, []);
@@ -27,10 +32,23 @@ export default function SchoolInfoManager() {
     setTimeout(() => setToast(""), 3000);
   };
 
-  const handleSave = (e?: React.FormEvent) => {
+  const updateInfo = (updater: (prev: SchoolInfo) => SchoolInfo) => {
+    isDirtyRef.current = true;
+    setInfo(updater);
+  };
+
+  const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    dataService.saveSchoolInfo(info);
-    showToast("✅ School Information, Branding & Selected Features saved globally across the website!");
+    setSaving(true);
+    try {
+      await dataService.saveSchoolInfo(info);
+      isDirtyRef.current = false;
+      showToast("✅ School Information, Branding & Selected Features saved globally across the website!");
+    } catch (err: any) {
+      showToast("⚠️ Notice: Saved locally. " + (err?.message || ""));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleImageUpload = (
@@ -63,8 +81,8 @@ export default function SchoolInfoManager() {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-          setInfo(prev => ({ ...prev, [key]: compressedDataUrl }));
-          showToast(`Image uploaded for ${key}! Click 'Save Changes' to publish everywhere.`);
+          updateInfo(prev => ({ ...prev, [key]: compressedDataUrl }));
+          showToast(`Image uploaded for ${key}! Click 'Save & Publish Globally' to apply.`);
         }
       };
       img.src = reader.result as string;
@@ -79,12 +97,12 @@ export default function SchoolInfoManager() {
 
   const toggleFacility = (id: string) => {
     const updated = facilitiesList.map(f => (f.id === id ? { ...f, enabled: !f.enabled } : f));
-    setInfo(prev => ({ ...prev, facilities: updated }));
+    updateInfo(prev => ({ ...prev, facilities: updated }));
   };
 
   const updateFacilityField = (id: string, field: "name" | "desc", val: string) => {
     const updated = facilitiesList.map(f => (f.id === id ? { ...f, [field]: val } : f));
-    setInfo(prev => ({ ...prev, facilities: updated }));
+    updateInfo(prev => ({ ...prev, facilities: updated }));
   };
 
   const addCustomFacility = () => {
@@ -96,11 +114,11 @@ export default function SchoolInfoManager() {
       iconUrl: LOGOS.techEnabledLearning,
       enabled: true,
     };
-    setInfo(prev => ({ ...prev, facilities: [...facilitiesList, newFac] }));
+    updateInfo(prev => ({ ...prev, facilities: [...facilitiesList, newFac] }));
   };
 
   const removeFacility = (id: string) => {
-    setInfo(prev => ({ ...prev, facilities: facilitiesList.filter(f => f.id !== id) }));
+    updateInfo(prev => ({ ...prev, facilities: facilitiesList.filter(f => f.id !== id) }));
   };
 
   // Why Choose Us Toggles & Handlers
@@ -110,12 +128,12 @@ export default function SchoolInfoManager() {
 
   const toggleWhyChoose = (id: string) => {
     const updated = whyChooseList.map(f => (f.id === id ? { ...f, enabled: !f.enabled } : f));
-    setInfo(prev => ({ ...prev, whyChooseFeatures: updated }));
+    updateInfo(prev => ({ ...prev, whyChooseFeatures: updated }));
   };
 
   const updateWhyChooseField = (id: string, field: "title" | "desc", val: string) => {
     const updated = whyChooseList.map(f => (f.id === id ? { ...f, [field]: val } : f));
-    setInfo(prev => ({ ...prev, whyChooseFeatures: updated }));
+    updateInfo(prev => ({ ...prev, whyChooseFeatures: updated }));
   };
 
   const addCustomWhyChoose = () => {
@@ -127,11 +145,11 @@ export default function SchoolInfoManager() {
       iconUrl: LOGOS.academicExcellence,
       enabled: true,
     };
-    setInfo(prev => ({ ...prev, whyChooseFeatures: [...whyChooseList, newFeat] }));
+    updateInfo(prev => ({ ...prev, whyChooseFeatures: [...whyChooseList, newFeat] }));
   };
 
   const removeWhyChoose = (id: string) => {
-    setInfo(prev => ({ ...prev, whyChooseFeatures: whyChooseList.filter(f => f.id !== id) }));
+    updateInfo(prev => ({ ...prev, whyChooseFeatures: whyChooseList.filter(f => f.id !== id) }));
   };
 
   return (
@@ -155,12 +173,14 @@ export default function SchoolInfoManager() {
         </div>
         <button
           onClick={() => handleSave()}
-          className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
+          disabled={saving}
+          className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-95 transition-opacity disabled:opacity-60 flex items-center gap-2"
           style={{ background: "var(--primary)" }}
         >
-          Save & Publish Globally
+          {saving ? "Saving..." : "Save & Publish Globally"}
         </button>
       </div>
+
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sub-tabs */}
@@ -213,7 +233,7 @@ export default function SchoolInfoManager() {
                   <input
                     required
                     value={info.name}
-                    onChange={e => setInfo(f => ({ ...f, name: e.target.value }))}
+                    onChange={e => updateInfo(f => ({ ...f, name: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                   />
                 </div>
@@ -222,7 +242,7 @@ export default function SchoolInfoManager() {
                   <label className="font-semibold text-slate-700 block mb-1">School Motto / Tagline</label>
                   <input
                     value={info.tagline}
-                    onChange={e => setInfo(f => ({ ...f, tagline: e.target.value }))}
+                    onChange={e => updateInfo(f => ({ ...f, tagline: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                   />
                 </div>
@@ -233,7 +253,7 @@ export default function SchoolInfoManager() {
                     <input
                       type="number"
                       value={info.established}
-                      onChange={e => setInfo(f => ({ ...f, established: Number(e.target.value) }))}
+                      onChange={e => updateInfo(f => ({ ...f, established: Number(e.target.value) }))}
                       className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none"
                     />
                   </div>
@@ -241,7 +261,7 @@ export default function SchoolInfoManager() {
                     <label className="font-semibold text-slate-700 block mb-1">CBSE Affiliation No.</label>
                     <input
                       value={info.affiliationNo}
-                      onChange={e => setInfo(f => ({ ...f, affiliationNo: e.target.value }))}
+                      onChange={e => updateInfo(f => ({ ...f, affiliationNo: e.target.value }))}
                       className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none"
                     />
                   </div>
@@ -249,7 +269,7 @@ export default function SchoolInfoManager() {
                     <label className="font-semibold text-slate-700 block mb-1">Education Board</label>
                     <input
                       value={info.board}
-                      onChange={e => setInfo(f => ({ ...f, board: e.target.value }))}
+                      onChange={e => updateInfo(f => ({ ...f, board: e.target.value }))}
                       className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                     />
                   </div>
@@ -260,7 +280,7 @@ export default function SchoolInfoManager() {
                   <textarea
                     rows={4}
                     value={info.about}
-                    onChange={e => setInfo(f => ({ ...f, about: e.target.value }))}
+                    onChange={e => updateInfo(f => ({ ...f, about: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl p-3 text-xs focus:outline-none resize-none leading-relaxed"
                   />
                 </div>
@@ -292,7 +312,7 @@ export default function SchoolInfoManager() {
                       type="text"
                       placeholder="Or enter image URL (https://...)"
                       value={info.logoUrl || ""}
-                      onChange={e => setInfo(prev => ({ ...prev, logoUrl: e.target.value }))}
+                      onChange={e => updateInfo(prev => ({ ...prev, logoUrl: e.target.value }))}
                       className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
                     />
                     <button
@@ -330,7 +350,7 @@ export default function SchoolInfoManager() {
                       type="text"
                       placeholder="Enter banner image URL (https://...)"
                       value={info.heroImageUrl || ""}
-                      onChange={e => setInfo(prev => ({ ...prev, heroImageUrl: e.target.value }))}
+                      onChange={e => updateInfo(prev => ({ ...prev, heroImageUrl: e.target.value }))}
                       className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
                     />
                     <button
@@ -368,7 +388,7 @@ export default function SchoolInfoManager() {
                       type="text"
                       placeholder="Enter campus image URL (https://...)"
                       value={info.campusImageUrl || ""}
-                      onChange={e => setInfo(prev => ({ ...prev, campusImageUrl: e.target.value }))}
+                      onChange={e => updateInfo(prev => ({ ...prev, campusImageUrl: e.target.value }))}
                       className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
                     />
                     <button
@@ -406,7 +426,7 @@ export default function SchoolInfoManager() {
                       type="text"
                       placeholder="Enter About Us image URL (https://...)"
                       value={info.aboutUsImageUrl || ""}
-                      onChange={e => setInfo(prev => ({ ...prev, aboutUsImageUrl: e.target.value }))}
+                      onChange={e => updateInfo(prev => ({ ...prev, aboutUsImageUrl: e.target.value }))}
                       className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
                     />
                     <button
@@ -638,7 +658,7 @@ export default function SchoolInfoManager() {
                       type="text"
                       placeholder="Enter photo URL (https://...)"
                       value={info.principalImageUrl || ""}
-                      onChange={e => setInfo(prev => ({ ...prev, principalImageUrl: e.target.value }))}
+                      onChange={e => updateInfo(prev => ({ ...prev, principalImageUrl: e.target.value }))}
                       className="flex-1 border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none"
                     />
                     <button
@@ -662,7 +682,7 @@ export default function SchoolInfoManager() {
                   <label className="font-semibold text-slate-700 block mb-1">Principal / Head of Institution Name</label>
                   <input
                     value={info.principal}
-                    onChange={e => setInfo(f => ({ ...f, principal: e.target.value }))}
+                    onChange={e => updateInfo(f => ({ ...f, principal: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                     placeholder="e.g. Dr. Priya Sharma"
                   />
@@ -673,7 +693,7 @@ export default function SchoolInfoManager() {
                   <textarea
                     rows={6}
                     value={info.principalMessage}
-                    onChange={e => setInfo(f => ({ ...f, principalMessage: e.target.value }))}
+                    onChange={e => updateInfo(f => ({ ...f, principalMessage: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl p-3 text-xs focus:outline-none resize-none leading-relaxed"
                   />
                 </div>
@@ -688,7 +708,7 @@ export default function SchoolInfoManager() {
                   <textarea
                     rows={2}
                     value={info.address}
-                    onChange={e => setInfo(f => ({ ...f, address: e.target.value }))}
+                    onChange={e => updateInfo(f => ({ ...f, address: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl p-3 text-xs focus:outline-none resize-none"
                   />
                 </div>
@@ -699,7 +719,7 @@ export default function SchoolInfoManager() {
                     <input
                       type="tel"
                       value={info.phone}
-                      onChange={e => setInfo(f => ({ ...f, phone: e.target.value }))}
+                      onChange={e => updateInfo(f => ({ ...f, phone: e.target.value }))}
                       className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                     />
                   </div>
@@ -708,7 +728,7 @@ export default function SchoolInfoManager() {
                     <input
                       type="email"
                       value={info.email}
-                      onChange={e => setInfo(f => ({ ...f, email: e.target.value }))}
+                      onChange={e => updateInfo(f => ({ ...f, email: e.target.value }))}
                       className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                     />
                   </div>
@@ -718,7 +738,7 @@ export default function SchoolInfoManager() {
                   <label className="font-semibold text-slate-700 block mb-1">Official Website Domain</label>
                   <input
                     value={info.website}
-                    onChange={e => setInfo(f => ({ ...f, website: e.target.value }))}
+                    onChange={e => updateInfo(f => ({ ...f, website: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none"
                   />
                 </div>
@@ -732,7 +752,7 @@ export default function SchoolInfoManager() {
                   <label className="font-semibold text-slate-700 block mb-1">Facebook Page URL</label>
                   <input
                     value={info.socials?.facebook || ""}
-                    onChange={e => setInfo(f => ({ ...f, socials: { ...f.socials, facebook: e.target.value } }))}
+                    onChange={e => updateInfo(f => ({ ...f, socials: { ...f.socials, facebook: e.target.value } }))}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                     placeholder="https://facebook.com/..."
                   />
@@ -742,7 +762,7 @@ export default function SchoolInfoManager() {
                   <label className="font-semibold text-slate-700 block mb-1">Instagram Profile URL</label>
                   <input
                     value={info.socials?.instagram || ""}
-                    onChange={e => setInfo(f => ({ ...f, socials: { ...f.socials, instagram: e.target.value } }))}
+                    onChange={e => updateInfo(f => ({ ...f, socials: { ...f.socials, instagram: e.target.value } }))}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                     placeholder="https://instagram.com/..."
                   />
@@ -752,7 +772,7 @@ export default function SchoolInfoManager() {
                   <label className="font-semibold text-slate-700 block mb-1">YouTube Channel URL</label>
                   <input
                     value={info.socials?.youtube || ""}
-                    onChange={e => setInfo(f => ({ ...f, socials: { ...f.socials, youtube: e.target.value } }))}
+                    onChange={e => updateInfo(f => ({ ...f, socials: { ...f.socials, youtube: e.target.value } }))}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none"
                     placeholder="https://youtube.com/@..."
                   />
@@ -763,12 +783,14 @@ export default function SchoolInfoManager() {
             <div className="pt-4 border-t border-slate-100 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
+                disabled={saving}
+                className="px-6 py-2.5 rounded-xl font-bold text-white shadow-sm hover:opacity-95 transition-opacity disabled:opacity-60"
                 style={{ background: "var(--primary)" }}
               >
-                Save Changes Globally
+                {saving ? "Saving Changes..." : "Save Changes Globally"}
               </button>
             </div>
+
           </form>
         </div>
       </div>

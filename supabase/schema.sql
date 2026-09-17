@@ -100,15 +100,32 @@ CREATE TABLE IF NOT EXISTS public.school_info (
     board TEXT NOT NULL DEFAULT 'CBSE (Central Board of Secondary Education)',
     principal TEXT NOT NULL DEFAULT 'Dr. Priya Sharma',
     principal_message TEXT,
+    principal_image_url TEXT,
     address TEXT NOT NULL,
     phone TEXT NOT NULL,
     email TEXT NOT NULL,
     website TEXT NOT NULL,
     about TEXT,
+    logo_url TEXT,
+    hero_image_url TEXT,
+    campus_image_url TEXT,
+    about_us_image_url TEXT,
+    facilities JSONB NOT NULL DEFAULT '[]'::jsonb,
+    why_choose_features JSONB NOT NULL DEFAULT '[]'::jsonb,
     socials JSONB NOT NULL DEFAULT '{"facebook":"","instagram":"","youtube":""}'::jsonb,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT single_row CHECK (id = 1)
 );
+
+-- Ensure existing database tables get updated with new columns if they were created earlier
+ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS principal_image_url TEXT;
+ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS hero_image_url TEXT;
+ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS campus_image_url TEXT;
+ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS about_us_image_url TEXT;
+ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS facilities JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS why_choose_features JSONB NOT NULL DEFAULT '[]'::jsonb;
+
 
 -- 8. AI GENERATED EXAM PAPERS TABLE
 CREATE TABLE IF NOT EXISTS public.saved_papers (

@@ -335,30 +335,58 @@ class DataService {
       const schoolRes = await supabase.select("school_info", "id=eq.1");
       if (schoolRes.data && Array.isArray(schoolRes.data) && schoolRes.data.length > 0) {
         const row = schoolRes.data[0];
-        const mappedSchool: SchoolInfo = {
-          name: row.name || INITIAL_SCHOOL_INFO.name,
-          tagline: row.tagline || INITIAL_SCHOOL_INFO.tagline,
-          established: row.established || INITIAL_SCHOOL_INFO.established,
-          affiliationNo: row.affiliation_no || INITIAL_SCHOOL_INFO.affiliationNo,
-          board: row.board || INITIAL_SCHOOL_INFO.board,
-          principal: row.principal || INITIAL_SCHOOL_INFO.principal,
-          principalMessage: row.principal_message || INITIAL_SCHOOL_INFO.principalMessage,
-          principalImageUrl: row.principal_image_url || row.principalImageUrl || INITIAL_SCHOOL_INFO.principalImageUrl,
-          address: row.address || INITIAL_SCHOOL_INFO.address,
-          phone: row.phone || INITIAL_SCHOOL_INFO.phone,
-          email: row.email || INITIAL_SCHOOL_INFO.email,
-          website: row.website || INITIAL_SCHOOL_INFO.website,
-          about: row.about || INITIAL_SCHOOL_INFO.about,
-          logoUrl: row.logo_url || row.logoUrl,
-          heroImageUrl: row.hero_image_url || row.heroImageUrl,
-          campusImageUrl: row.campus_image_url || row.campusImageUrl,
-          aboutUsImageUrl: row.about_us_image_url || row.aboutUsImageUrl,
-          facilities: typeof row.facilities === "string" ? JSON.parse(row.facilities) : (row.facilities || INITIAL_FACILITIES),
-          whyChooseFeatures: typeof row.why_choose_features === "string" ? JSON.parse(row.why_choose_features) : (row.why_choose_features || INITIAL_WHY_CHOOSE_FEATURES),
-          socials: typeof row.socials === "string" ? JSON.parse(row.socials) : (row.socials || INITIAL_SCHOOL_INFO.socials),
-        };
-        localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(mappedSchool));
+        const remoteUpdatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+
+        let localUpdatedAt = 0;
+        let localSchool: SchoolInfo | null = null;
+        try {
+          const rawLocal = localStorage.getItem(KEY_SCHOOL_INFO);
+          if (rawLocal) {
+            localSchool = JSON.parse(rawLocal);
+            localUpdatedAt = Number(localSchool?._updatedAt) || 0;
+          }
+        } catch (_) {}
+
+        // If local has newer modifications, push local to Supabase instead of overwriting with stale data
+        if (localUpdatedAt > remoteUpdatedAt && localUpdatedAt > 0 && localSchool) {
+          this.pushSchoolInfoToSupabase(localSchool).catch(() => {});
+        } else {
+          const mappedSchool: SchoolInfo = {
+            name: row.name || INITIAL_SCHOOL_INFO.name,
+            tagline: row.tagline || INITIAL_SCHOOL_INFO.tagline,
+            established: Number(row.established) || INITIAL_SCHOOL_INFO.established,
+            affiliationNo: row.affiliation_no || row.affiliationNo || INITIAL_SCHOOL_INFO.affiliationNo,
+            board: row.board || INITIAL_SCHOOL_INFO.board,
+            principal: row.principal || INITIAL_SCHOOL_INFO.principal,
+            principalMessage: row.principal_message || row.principalMessage || INITIAL_SCHOOL_INFO.principalMessage,
+            principalImageUrl: row.principal_image_url || row.principalImageUrl || (localSchool?.principalImageUrl) || INITIAL_SCHOOL_INFO.principalImageUrl,
+            address: row.address || INITIAL_SCHOOL_INFO.address,
+            phone: row.phone || INITIAL_SCHOOL_INFO.phone,
+            email: row.email || INITIAL_SCHOOL_INFO.email,
+            website: row.website || INITIAL_SCHOOL_INFO.website,
+            about: row.about || INITIAL_SCHOOL_INFO.about,
+            logoUrl: row.logo_url || row.logoUrl || (localSchool?.logoUrl),
+            heroImageUrl: row.hero_image_url || row.heroImageUrl || (localSchool?.heroImageUrl),
+            campusImageUrl: row.campus_image_url || row.campusImageUrl || (localSchool?.campusImageUrl),
+            aboutUsImageUrl: row.about_us_image_url || row.aboutUsImageUrl || (localSchool?.aboutUsImageUrl),
+            facilities: typeof row.facilities === "string" 
+              ? JSON.parse(row.facilities) 
+              : (Array.isArray(row.facilities) && row.facilities.length > 0 ? row.facilities : (localSchool?.facilities || INITIAL_FACILITIES)),
+            whyChooseFeatures: typeof row.why_choose_features === "string" 
+              ? JSON.parse(row.why_choose_features) 
+              : (Array.isArray(row.why_choose_features) && row.why_choose_features.length > 0 ? row.why_choose_features : (localSchool?.whyChooseFeatures || INITIAL_WHY_CHOOSE_FEATURES)),
+            socials: typeof row.socials === "string" 
+              ? JSON.parse(row.socials) 
+              : (row.socials || localSchool?.socials || INITIAL_SCHOOL_INFO.socials),
+            _updatedAt: remoteUpdatedAt || localUpdatedAt || Date.now(),
+          };
+          localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(mappedSchool));
+        }
+      } else if (schoolRes.error || (schoolRes.data && schoolRes.data.length === 0)) {
+        const currentLocal = this.getSchoolInfo();
+        this.pushSchoolInfoToSupabase(currentLocal).catch(() => {});
       }
+
 
       // 9. Sync Saved AI Exam Papers Table across PC and Mobile
       const papersRes = await supabase.select("saved_papers", "order=created_at.desc");
@@ -984,8 +1012,8 @@ class DataService {
         return {
           ...INITIAL_SCHOOL_INFO,
           ...parsed,
-          facilities: parsed.facilities || INITIAL_FACILITIES,
-          whyChooseFeatures: parsed.whyChooseFeatures || INITIAL_WHY_CHOOSE_FEATURES,
+          facilities: Array.isArray(parsed.facilities) && parsed.facilities.length > 0 ? parsed.facilities : INITIAL_FACILITIES,
+          whyChooseFeatures: Array.isArray(parsed.whyChooseFeatures) && parsed.whyChooseFeatures.length > 0 ? parsed.whyChooseFeatures : INITIAL_WHY_CHOOSE_FEATURES,
         };
       }
     } catch (e) {
@@ -994,33 +1022,83 @@ class DataService {
     return INITIAL_SCHOOL_INFO;
   }
 
-  saveSchoolInfo(info: SchoolInfo) {
-    localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(info));
+  async saveSchoolInfo(info: SchoolInfo): Promise<{ success: boolean; error?: string }> {
+    const now = Date.now();
+    const toSave: SchoolInfo = {
+      ...info,
+      _updatedAt: now,
+    };
+    try {
+      localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(toSave));
+    } catch (e) {
+      console.warn("LocalStorage error while saving school info:", e);
+    }
     this.notify();
 
-    supabase.update("school_info", "id=eq.1", {
-      name: info.name,
-      tagline: info.tagline,
-      established: info.established,
-      affiliation_no: info.affiliationNo,
-      board: info.board,
-      principal: info.principal,
-      principal_message: info.principalMessage,
-      principal_image_url: info.principalImageUrl,
-      address: info.address,
-      phone: info.phone,
-      email: info.email,
-      website: info.website,
-      about: info.about,
-      logo_url: info.logoUrl,
-      hero_image_url: info.heroImageUrl,
-      campus_image_url: info.campusImageUrl,
-      about_us_image_url: info.aboutUsImageUrl,
-      facilities: info.facilities,
-      why_choose_features: info.whyChooseFeatures,
-      socials: info.socials,
-    }).catch(() => {});
+    return await this.pushSchoolInfoToSupabase(toSave);
   }
+
+  private async pushSchoolInfoToSupabase(info: SchoolInfo): Promise<{ success: boolean; error?: string }> {
+    try {
+      const payload: any = {
+        id: 1,
+        name: info.name || INITIAL_SCHOOL_INFO.name,
+        tagline: info.tagline || "",
+        established: Number(info.established) || 1989,
+        affiliation_no: info.affiliationNo || "",
+        board: info.board || "",
+        principal: info.principal || "",
+        principal_message: info.principalMessage || "",
+        principal_image_url: info.principalImageUrl || "",
+        address: info.address || "",
+        phone: info.phone || "",
+        email: info.email || "",
+        website: info.website || "",
+        about: info.about || "",
+        logo_url: info.logoUrl || "",
+        hero_image_url: info.heroImageUrl || "",
+        campus_image_url: info.campusImageUrl || "",
+        about_us_image_url: info.aboutUsImageUrl || "",
+        facilities: info.facilities || [],
+        why_choose_features: info.whyChooseFeatures || [],
+        socials: info.socials || {},
+        updated_at: new Date(info._updatedAt || Date.now()).toISOString(),
+      };
+
+      // Try update first
+      const updateRes = await supabase.update("school_info", "id=eq.1", payload);
+      if (updateRes.error || !updateRes.data || (Array.isArray(updateRes.data) && updateRes.data.length === 0)) {
+        // If row doesn't exist yet, insert it
+        const insertRes = await supabase.insert("school_info", payload);
+        if (insertRes.error) {
+          // Fallback if custom columns don't exist in older Supabase schema
+          const minimalPayload: any = {
+            id: 1,
+            name: info.name || INITIAL_SCHOOL_INFO.name,
+            tagline: info.tagline || "",
+            established: Number(info.established) || 1989,
+            affiliation_no: info.affiliationNo || "",
+            board: info.board || "",
+            principal: info.principal || "",
+            principal_message: info.principalMessage || "",
+            address: info.address || "",
+            phone: info.phone || "",
+            email: info.email || "",
+            website: info.website || "",
+            about: info.about || "",
+            socials: info.socials || {},
+            updated_at: new Date(info._updatedAt || Date.now()).toISOString(),
+          };
+          await supabase.update("school_info", "id=eq.1", minimalPayload).catch(() => {});
+        }
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.warn("[DataService] Cloud sync error for school_info:", err);
+      return { success: false, error: err?.message || String(err) };
+    }
+  }
+
 
   // --- SAVED AI EXAM PAPERS (CROSS-DEVICE SYNC) ---
   getSavedPapers(): SavedExamPaper[] {
