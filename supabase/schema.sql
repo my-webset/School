@@ -282,7 +282,22 @@ CREATE POLICY "Admin full access site_settings" ON public.site_settings FOR ALL 
 CREATE POLICY "Admin full access inquiries" ON public.inquiries FOR ALL USING (true) WITH CHECK (true);
 
 -- ==============================================================================
--- 11. SUPABASE STORAGE BUCKET FOR SCHOOL BRANDING & IMAGES
+-- 11. SCHOOL BRANDING & IMAGE ASSETS TABLE (Independent table for Logo, Hero, Campus, Principal images)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.school_assets (
+    key TEXT PRIMARY KEY,
+    image_url TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_school_assets_key ON public.school_assets(key);
+
+ALTER TABLE public.school_assets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public can view school_assets" ON public.school_assets FOR SELECT USING (true);
+CREATE POLICY "Admin full access school_assets" ON public.school_assets FOR ALL USING (true) WITH CHECK (true);
+
+-- ==============================================================================
+-- 12. SUPABASE STORAGE BUCKET FOR SCHOOL BRANDING & IMAGES
 -- ==============================================================================
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('school-assets', 'school-assets', true)
@@ -291,5 +306,7 @@ ON CONFLICT (id) DO UPDATE SET public = true;
 CREATE POLICY "Public Read Access to school-assets" ON storage.objects FOR SELECT USING (bucket_id = 'school-assets');
 CREATE POLICY "Public Upload to school-assets" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'school-assets');
 CREATE POLICY "Public Update to school-assets" ON storage.objects FOR UPDATE USING (bucket_id = 'school-assets') WITH CHECK (bucket_id = 'school-assets');
+
+
 
 

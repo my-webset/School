@@ -104,23 +104,21 @@ export default function SchoolInfoManager() {
         return;
       }
 
-      // 1. Try uploading to Supabase Storage bucket for a true global CDN URL
-      const ext = file.name.split(".").pop() || "jpg";
-      const fileName = `${key}-${Date.now()}.${ext}`;
-      const uploadRes = await supabase.uploadFile("school-assets", fileName, compressedBlob);
-
+      let finalUrl = "";
       if (uploadRes.publicUrl && !uploadRes.error) {
-        updateInfo(prev => ({ ...prev, [key]: uploadRes.publicUrl! }));
-        showToast(`✅ Cloud image ready! Click 'Save & Publish Globally' to sync to mobile.`);
+        finalUrl = uploadRes.publicUrl;
       } else {
-        // Fallback: Convert to compact base64 data URL
-        const reader = new FileReader();
-        reader.onload = () => {
-          const compactDataUrl = reader.result as string;
-          updateInfo(prev => ({ ...prev, [key]: compactDataUrl }));
-          showToast(`Image processed! Click 'Save & Publish Globally' to sync everywhere.`);
-        };
-        reader.readAsDataURL(compressedBlob);
+        finalUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(compressedBlob);
+        });
+      }
+
+      if (finalUrl) {
+        updateInfo(prev => ({ ...prev, [key]: finalUrl }));
+        await dataService.saveSchoolAsset(key, finalUrl);
+        showToast(`✅ Image uploaded & saved to database table!`);
       }
     } catch (err: any) {
       console.error(err);

@@ -50,7 +50,7 @@ export default function AdminLogin({ onLogin, setView }: Props) {
           <div className="p-8 text-center" style={{ background: "var(--sidebar)" }}>
             <div className="w-20 h-20 rounded-2xl bg-white/10 p-2 mx-auto mb-4 backdrop-blur flex items-center justify-center shadow-lg">
               <img
-                src={LOGOS.schoolLogo}
+                src={school.logoUrl || LOGOS.schoolLogo}
                 alt={school.name}
                 className="w-full h-full object-contain"
               />

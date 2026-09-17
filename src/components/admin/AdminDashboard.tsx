@@ -21,7 +21,13 @@ export default function AdminDashboard({ onLogout }: Props) {
   const [section, setSection] = useState("dashboard");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const school = dataService.getSchoolInfo();
+  const [school, setSchool] = useState(() => dataService.getSchoolInfo());
+
+  useEffect(() => {
+    return dataService.subscribe(() => {
+      setSchool(dataService.getSchoolInfo());
+    });
+  }, []);
 
   const renderSection = () => {
     switch (section) {

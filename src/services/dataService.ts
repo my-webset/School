@@ -387,6 +387,30 @@ class DataService {
         this.pushSchoolInfoToSupabase(currentLocal).catch(() => {});
       }
 
+      // 8b. Sync School Assets Table (Direct database table for Logo, Hero, Campus, Principal images)
+      try {
+        const assetsRes = await supabase.select("school_assets");
+        if (assetsRes.data && Array.isArray(assetsRes.data) && assetsRes.data.length > 0) {
+          const rawLocal = localStorage.getItem(KEY_SCHOOL_INFO);
+          const currentSchool = rawLocal ? JSON.parse(rawLocal) : { ...INITIAL_SCHOOL_INFO };
+          let changed = false;
+
+          assetsRes.data.forEach((row: any) => {
+            if (row.key && row.image_url && (currentSchool as any)[row.key] !== row.image_url) {
+              (currentSchool as any)[row.key] = row.image_url;
+              changed = true;
+            }
+          });
+
+          if (changed) {
+            localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(currentSchool));
+          }
+        }
+      } catch (err) {
+        console.warn("[DataService] Notice on school_assets sync:", err);
+      }
+
+
 
       // 9. Sync Saved AI Exam Papers Table across PC and Mobile
       const papersRes = await supabase.select("saved_papers", "order=created_at.desc");
@@ -1157,12 +1181,74 @@ class DataService {
           await supabase.update("school_info", "id=eq.1", minimalPayload).catch(() => {});
         }
       }
+
+      // Also sync each asset row to the dedicated school_assets table in Supabase
+      const assetsToSync = [
+        { key: "logoUrl", val: logoUrl },
+        { key: "heroImageUrl", val: heroImageUrl },
+        { key: "campusImageUrl", val: campusImageUrl },
+        { key: "aboutUsImageUrl", val: aboutUsImageUrl },
+        { key: "principalImageUrl", val: principalImageUrl },
+      ];
+
+      for (const item of assetsToSync) {
+        if (item.val) {
+          supabase.update("school_assets", `key=eq.${item.key}`, {
+            key: item.key,
+            image_url: item.val,
+            updated_at: new Date().toISOString(),
+          }).then((res) => {
+            if (res.error || !res.data || (Array.isArray(res.data) && res.data.length === 0)) {
+              supabase.insert("school_assets", {
+                key: item.key,
+                image_url: item.val,
+                updated_at: new Date().toISOString(),
+              }).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+      }
+
       return { success: true };
     } catch (err: any) {
       console.warn("[DataService] Cloud sync error for school_info:", err);
       return { success: false, error: err?.message || String(err) };
     }
   }
+
+  async saveSchoolAsset(key: string, imageUrl: string): Promise<boolean> {
+    if (!key || !imageUrl) return false;
+
+    // 1. Update local storage
+    const current = this.getSchoolInfo();
+    (current as any)[key] = imageUrl;
+    current._updatedAt = Date.now();
+    try {
+      localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(current));
+    } catch (_) {}
+    this.notify();
+
+    // 2. Direct single-row update to Supabase school_assets table
+    try {
+      const updateRes = await supabase.update("school_assets", `key=eq.${key}`, {
+        key,
+        image_url: imageUrl,
+        updated_at: new Date().toISOString(),
+      });
+      if (updateRes.error || !updateRes.data || (Array.isArray(updateRes.data) && updateRes.data.length === 0)) {
+        await supabase.insert("school_assets", {
+          key,
+          image_url: imageUrl,
+          updated_at: new Date().toISOString(),
+        });
+      }
+      return true;
+    } catch (e) {
+      console.warn("[DataService] Direct school_assets push error:", e);
+      return false;
+    }
+  }
+
 
 
   // --- SAVED AI EXAM PAPERS (CROSS-DEVICE SYNC) ---

@@ -99,7 +99,7 @@ export default function HomePage({ setCurrentPage }: Props) {
           {/* Quick Stats Pill */}
           <div className="lg:col-span-4 bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 text-white space-y-5 shadow-2xl">
             <div className="flex items-center gap-3">
-              <img src={LOGOS.schoolLogo} alt="Logo" className="w-12 h-12 object-contain p-1 bg-white/20 rounded-xl" />
+              <img src={school.logoUrl || LOGOS.schoolLogo} alt="Logo" className="w-12 h-12 object-contain p-1 bg-white/20 rounded-xl" />
               <div>
                 <div className="font-bold text-sm" style={{ fontFamily: "DM Serif Display, serif" }}>Key Highlights</div>
                 <div className="text-[11px] text-blue-200">Excellence in Numbers</div>
@@ -312,7 +312,7 @@ export default function HomePage({ setCurrentPage }: Props) {
       <section className="py-16 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white text-center">
         <div className="max-w-3xl mx-auto px-6 space-y-5">
           <div className="w-14 h-14 rounded-2xl bg-white/10 p-2 mx-auto mb-2 flex items-center justify-center">
-            <img src={LOGOS.schoolLogo} alt="Logo" className="w-full h-full object-contain" />
+            <img src={school.logoUrl || LOGOS.schoolLogo} alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: "DM Serif Display, serif" }}>
             Admissions Open for Academic Session 2026-27

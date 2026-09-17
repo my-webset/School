@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { dataService } from "../../services/dataService";
 import LOGOS from "../../assets/logos";
 
@@ -29,8 +30,15 @@ export default function AdminSidebar({
   setCollapsed,
   onLogout,
 }: Props) {
-  const school = dataService.getSchoolInfo();
-  const stats = dataService.getStats();
+  const [school, setSchool] = useState(() => dataService.getSchoolInfo());
+  const [stats, setStats] = useState(() => dataService.getStats());
+
+  useEffect(() => {
+    return dataService.subscribe(() => {
+      setSchool(dataService.getSchoolInfo());
+      setStats(dataService.getStats());
+    });
+  }, []);
 
   return (
     <aside
@@ -47,7 +55,7 @@ export default function AdminSidebar({
         style={{ borderColor: "rgba(255,255,255,0.08)" }}
       >
         <img
-          src={LOGOS.schoolLogo}
+          src={school.logoUrl || LOGOS.schoolLogo}
           alt={school.name}
           className="w-10 h-10 object-contain rounded-lg flex-shrink-0 bg-white/10 p-1"
         />
