@@ -916,7 +916,7 @@ class DataService {
     this.notify();
   }
 
-  addGalleryItem(item: Omit<GalleryItem, "id">): GalleryItem {
+  async addGalleryItem(item: Omit<GalleryItem, "id">): Promise<GalleryItem> {
     const items = this.getGallery();
     const newItem: GalleryItem = {
       ...item,
@@ -925,15 +925,16 @@ class DataService {
     items.unshift(newItem);
     this.saveGallery(items);
 
-    supabase.insert("gallery", {
+    const cloudResult = await supabase.insert("gallery", {
       id: newItem.id,
       title: newItem.title,
       category: newItem.category,
       image_url: newItem.imageUrl,
       date: newItem.date,
-    }).catch((err) => {
-      console.error("Supabase gallery insert error:", err);
     });
+    if (cloudResult.error) {
+      throw new Error(String(cloudResult.error));
+    }
 
     return newItem;
   }
@@ -1180,7 +1181,10 @@ class DataService {
             socials: info.socials || {},
             updated_at: new Date(info._updatedAt || Date.now()).toISOString(),
           };
-          await supabase.update("school_info", "id=eq.1", minimalPayload).catch(() => {});
+          const minimalUpdate = await supabase.update("school_info", "id=eq.1", minimalPayload);
+          if (minimalUpdate.error) {
+            throw new Error(`Could not save school information: ${minimalUpdate.error}`);
+          }
         }
       }
 
@@ -1195,19 +1199,18 @@ class DataService {
 
       for (const item of assetsToSync) {
         if (item.val) {
-          supabase.update("school_assets", `key=eq.${item.key}`, {
+          const assetPayload = {
             key: item.key,
             image_url: item.val,
             updated_at: new Date().toISOString(),
-          }).then((res) => {
-            if (res.error || !res.data || (Array.isArray(res.data) && res.data.length === 0)) {
-              supabase.insert("school_assets", {
-                key: item.key,
-                image_url: item.val,
-                updated_at: new Date().toISOString(),
-              }).catch(() => {});
+          };
+          const assetUpdate = await supabase.update("school_assets", `key=eq.${item.key}`, assetPayload);
+          if (assetUpdate.error || !assetUpdate.data || (Array.isArray(assetUpdate.data) && assetUpdate.data.length === 0)) {
+            const assetInsert = await supabase.insert("school_assets", assetPayload);
+            if (assetInsert.error) {
+              throw new Error(`Could not save ${item.key}: ${assetInsert.error}`);
             }
-          }).catch(() => {});
+          }
         }
       }
 
@@ -1238,11 +1241,16 @@ class DataService {
         updated_at: new Date().toISOString(),
       });
       if (updateRes.error || !updateRes.data || (Array.isArray(updateRes.data) && updateRes.data.length === 0)) {
-        await supabase.insert("school_assets", {
+        const insertRes = await supabase.insert("school_assets", {
           key,
           image_url: imageUrl,
           updated_at: new Date().toISOString(),
         });
+        if (insertRes.error) {
+          throw new Error(String(insertRes.error));
+        }
+      } else if (updateRes.error) {
+        throw new Error(String(updateRes.error));
       }
       return true;
     } catch (e) {

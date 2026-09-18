@@ -43,7 +43,10 @@ export default function SchoolInfoManager() {
     if (e) e.preventDefault();
     setSaving(true);
     try {
-      await dataService.saveSchoolInfo(info);
+      const result = await dataService.saveSchoolInfo(info);
+      if (!result.success) {
+        throw new Error(result.error || "Cloud save failed");
+      }
       isDirtyRef.current = false;
       showToast("✅ School Information, Branding & Images synced globally to all devices!");
     } catch (err: any) {
@@ -109,22 +112,17 @@ export default function SchoolInfoManager() {
         `${key}-${Date.now()}.jpg`,
         compressedBlob,
       );
-      let finalUrl = "";
-      if (uploadRes.publicUrl && !uploadRes.error) {
-        finalUrl = uploadRes.publicUrl;
-      } else {
-        finalUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(compressedBlob);
-        });
+      if (!uploadRes.publicUrl || uploadRes.error) {
+        throw new Error(String(uploadRes.error || "Cloud image upload failed"));
       }
 
-      if (finalUrl) {
-        updateInfo(prev => ({ ...prev, [key]: finalUrl }));
-        await dataService.saveSchoolAsset(key, finalUrl);
-        showToast(`✅ Image uploaded & saved to database table!`);
+      const saved = await dataService.saveSchoolAsset(key, uploadRes.publicUrl);
+      if (!saved) {
+        throw new Error("Cloud image record could not be saved");
       }
+
+      updateInfo(prev => ({ ...prev, [key]: uploadRes.publicUrl as string }));
+      showToast(`✅ Image uploaded & saved to database table!`);
     } catch (err: any) {
       console.error(err);
       showToast("⚠️ Image upload notice: " + (err?.message || ""));

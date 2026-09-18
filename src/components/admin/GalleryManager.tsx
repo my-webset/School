@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { dataService } from "../../services/dataService";
+import { supabase } from "../../lib/supabase";
 import { GalleryItem } from "../../types";
 
 export default function GalleryManager() {
@@ -81,13 +82,42 @@ export default function GalleryManager() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.imageUrl) {
       alert("Please provide a title and select/provide an image.");
       return;
     }
-    dataService.addGalleryItem(form);
+
+    let imageUrl = form.imageUrl;
+    if (imageUrl.startsWith("data:image/")) {
+      setIsProcessingFile(true);
+      try {
+        const imageBlob = await fetch(imageUrl).then(response => response.blob());
+        const uploadRes = await supabase.uploadFile(
+          "school-assets",
+          `gallery-${Date.now()}.jpg`,
+          imageBlob,
+        );
+        if (!uploadRes.publicUrl || uploadRes.error) {
+          throw new Error(String(uploadRes.error || "Cloud image upload failed"));
+        }
+        imageUrl = uploadRes.publicUrl;
+      } catch (error: any) {
+        alert(`Image could not be published to the shared database: ${error?.message || "upload failed"}`);
+        setIsProcessingFile(false);
+        return;
+      } finally {
+        setIsProcessingFile(false);
+      }
+    }
+
+    try {
+      await dataService.addGalleryItem({ ...form, imageUrl });
+    } catch (error: any) {
+      alert(`Photo could not be saved to the shared database: ${error?.message || "cloud save failed"}`);
+      return;
+    }
     setShowModal(false);
     setForm({
       title: "",
