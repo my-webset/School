@@ -1445,16 +1445,51 @@ class DataService {
     }
   }
 
+  private async resetSupabaseTable(tableName: string, idColumn = "id") {
+    try {
+      const res = await supabase.select(tableName);
+      if (!res.data || !Array.isArray(res.data)) return;
+
+      for (const row of res.data) {
+        const rowId = row?.[idColumn];
+        if (rowId === undefined || rowId === null) continue;
+        await supabase.delete(tableName, `${idColumn}=eq.${rowId}`).catch(() => {});
+      }
+    } catch (err) {
+      console.warn(`[DataService] Failed to clear ${tableName} from Supabase:`, err);
+    }
+  }
+
   // --- RESET ALL DATA ---
   async resetAllData() {
+    const defaultSchoolInfo: SchoolInfo = {
+      ...INITIAL_SCHOOL_INFO,
+      _updatedAt: Date.now(),
+    };
+
     this.saveAdmissions(INITIAL_ADMISSIONS);
     localStorage.setItem(KEY_SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
     this.saveNotices(INITIAL_NOTICES);
     this.saveEvents(INITIAL_EVENTS);
     this.saveGallery(INITIAL_GALLERY);
-    this.saveSchoolInfo(INITIAL_SCHOOL_INFO);
+    localStorage.setItem(KEY_SCHOOL_INFO, JSON.stringify(defaultSchoolInfo));
     this.saveForms(INITIAL_FORMS);
     this.saveInquiries(INITIAL_INQUIRIES);
+    this.notify();
+
+    await Promise.allSettled([
+      this.resetSupabaseTable("admissions"),
+      this.resetSupabaseTable("custom_forms"),
+      this.resetSupabaseTable("form_submissions"),
+      this.resetSupabaseTable("notices"),
+      this.resetSupabaseTable("events"),
+      this.resetSupabaseTable("gallery"),
+      this.resetSupabaseTable("inquiries"),
+      this.resetSupabaseTable("saved_papers"),
+      this.resetSupabaseTable("school_assets"),
+    ]);
+
+    await this.pushSchoolInfoToSupabase(defaultSchoolInfo);
     this.notify();
   }
 
